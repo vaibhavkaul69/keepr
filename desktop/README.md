@@ -15,7 +15,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 ## What it does
 
 - **The receipt.** The window is a paper receipt of the promises you made yourself today. Finish a task and it gets a KEPT stamp. The totals show what you promised, kept and still owe.
-- **Tasks.** Add what you promised yourself today: a title and, if you like, a description. Clicking a notification opens Keepr on that task. Each task can have its own reminders:
+- **Tasks.** Add what you promised yourself today: a title and, if you like, a description. Click a task, or its notification, to open its details: description, schedule, next reminder and status, with snooze, edit and void. **← back** returns to the receipt. A long list scrolls inside the receipt. Each task can have its own reminders:
   - only the daily nudges
   - at set times every day, like `11:00, 14:00, 17:00`
   - every N minutes, for the next N hours or until done ("every 60 min for the next 12 hours")

@@ -9,7 +9,7 @@
 <body>
   <div class="desk">
     <div class="paper-shadow">
-      <article class="receipt">
+      <article id="receipt" class="receipt">
         <header class="head">
           <img class="logo" src="../../assets/icon.png" alt="" width="40" height="40">
           <p class="shop">KEEPR</p>
@@ -38,7 +38,9 @@
 
         <section>
           <h2 class="label">Today's promises</h2>
-          <ul id="lines" class="lines"></ul>
+          <div class="lines-scroll">
+            <ul id="lines" class="lines"></ul>
+          </div>
           <p id="lines-empty" class="empty">Nothing printed yet. Write your first promise below.</p>
         </section>
 
@@ -48,7 +50,7 @@
           <h2 id="form-heading" class="label">New promise</h2>
           <div class="write">
             <span class="caret">&gt;</span>
-            <input id="task-title" placeholder="i will..." maxlength="200">
+            <input id="task-title" placeholder="what's your next promise?" maxlength="200">
           </div>
           <textarea id="task-description" rows="2" maxlength="1000" placeholder="details, shown in the notification (optional)"></textarea>
           <label class="pick">remind me
@@ -92,6 +94,18 @@
           <button id="pause" class="link" type="button"></button>
           <button id="open-settings" class="link" type="button">settings</button>
         </nav>
+      </article>
+
+      <article id="detail" class="receipt" hidden>
+        <button id="detail-back" class="link back" type="button">&larr; back</button>
+        <h2 class="label">Promise</h2>
+        <p id="detail-title" class="detail-title"></p>
+        <p id="detail-stamp" class="stamp detail-stamp" hidden>Kept</p>
+        <p id="detail-description" class="detail-description"></p>
+        <hr class="cut">
+        <dl id="detail-facts" class="facts"></dl>
+        <hr class="cut">
+        <div id="detail-actions" class="actions"></div>
       </article>
     </div>
   </div>

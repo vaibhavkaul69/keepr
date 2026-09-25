@@ -1,12 +1,14 @@
 const api = window.keepr;
 
 const CONFIRM_MS = 3000;
-const FLASH_MS = 2000;
 const BAR_COUNT = 56;
 
 let view = null;
 let lastJson = '';
 let editingId = null;
+
+// The task open on the details screen, or null when the receipt is showing.
+let detailId = null;
 
 // Last known state of each task ('open' or 'kept'). New lines "print" in and newly kept lines get stamped.
 // It stays empty until the first render, so nothing animates on launch.
@@ -186,31 +188,36 @@ function openLine(task) {
   const box = el('button', { className: 'box', type: 'button', textContent: '[ ]', title: 'Mark kept' });
   box.addEventListener('mouseenter', () => { box.textContent = '[✓]'; });
   box.addEventListener('mouseleave', () => { box.textContent = '[ ]'; });
-  box.addEventListener('click', () => run(() => api.setDone(task.id, true)));
+  box.addEventListener('click', (event) => {
+    event.stopPropagation();
+    run(() => api.setDone(task.id, true));
+  });
   const isNew = seen && !seen.has(task.id);
-  return el('li', { className: isNew ? 'line printed' : 'line', id: `task-${task.id}` }, [
+  const line = el('li', { className: isNew ? 'line printed' : 'line', title: 'Open details' }, [
     box,
     lineTop(task, task.nextAt ? formatWhen(task.nextAt) : '—'),
     ...descriptionLine(task),
-    el('span', { className: 'sub' }, [
-      task.scheduleText.toLowerCase(),
-      linkButton('snooze', () => run(() => api.snooze(task.id))),
-      linkButton('edit', () => startEdit(task)),
-      voidButton(task),
-    ]),
+    el('span', { className: 'sub', textContent: task.scheduleText.toLowerCase() }),
   ]);
+  line.addEventListener('click', () => showDetail(task.id));
+  return line;
 }
 
 function keptLine(task) {
   const box = el('button', { className: 'box', type: 'button', textContent: '[x]', title: 'Mark not kept' });
-  box.addEventListener('click', () => run(() => api.setDone(task.id, false)));
+  box.addEventListener('click', (event) => {
+    event.stopPropagation();
+    run(() => api.setDone(task.id, false));
+  });
   const justKept = seen && seen.get(task.id) !== 'kept';
-  return el('li', { className: 'line kept', id: `task-${task.id}` }, [
+  const line = el('li', { className: 'line kept', title: 'Open details' }, [
     box,
     lineTop(task, formatTime(task.doneAt)),
     ...descriptionLine(task),
     el('span', { className: justKept ? 'stamp thump' : 'stamp', textContent: 'Kept' }),
   ]);
+  line.addEventListener('click', () => showDetail(task.id));
+  return line;
 }
 
 function renderLines() {
@@ -232,6 +239,76 @@ function render(next) {
   renderYesterday();
   renderLines();
   renderTotals();
+  renderDetail();
+}
+
+// ---------- details screen ----------
+
+function findTask(id) {
+  return [...view.openTasks, ...view.doneToday].find((task) => task.id === id) ?? null;
+}
+
+function fact(label, value) {
+  return el('div', {}, [el('dt', { textContent: label }), el('dd', { textContent: value })]);
+}
+
+function detailActions(task) {
+  const kept = Boolean(task.doneAt);
+  const toggle = el('button', { className: 'print', type: 'button', textContent: kept ? 'Mark not kept' : 'Mark kept' });
+  toggle.addEventListener('click', () => run(() => api.setDone(task.id, !kept)));
+  return [
+    toggle,
+    ...(kept ? [] : [linkButton('snooze 15 min', () => run(() => api.snooze(task.id)))]),
+    linkButton('edit', () => {
+      showReceipt();
+      startEdit(task);
+    }),
+    voidButton(task),
+  ];
+}
+
+// Goes back to the receipt when the task is gone, for example after "void".
+function renderDetail() {
+  if (!detailId) return;
+  const task = findTask(detailId);
+  if (!task) {
+    showReceipt();
+    return;
+  }
+  const kept = Boolean(task.doneAt);
+  $('detail-title').textContent = task.title;
+  $('detail-stamp').hidden = !kept;
+  $('detail-description').textContent = task.description || 'No description.';
+  $('detail-description').classList.toggle('none', !task.description);
+  $('detail-facts').replaceChildren(
+    fact('Schedule', task.scheduleText),
+    fact('Next reminder', !kept && task.nextAt ? formatWhen(task.nextAt) : '—'),
+    fact('Added', formatWhen(task.createdAt)),
+    fact('Status', kept ? `Kept at ${formatTime(task.doneAt)}` : 'Still owed'),
+  );
+  $('detail-actions').replaceChildren(...detailActions(task));
+}
+
+function showDetail(taskId) {
+  if (!view || !findTask(taskId)) return;
+  detailId = taskId;
+  $('receipt').hidden = true;
+  $('detail').hidden = false;
+  renderDetail();
+  window.scrollTo(0, 0);
+}
+
+function showReceipt() {
+  detailId = null;
+  $('detail').hidden = true;
+  $('receipt').hidden = false;
+  $('task-title').focus();
+}
+
+// Puts the cursor in the promise input, unless you are already typing in another field.
+function focusPromiseInput() {
+  const busy = document.activeElement?.matches('input, textarea, select');
+  if (!detailId && !$('settings').open && !busy) $('task-title').focus();
 }
 
 // ---------- task form ----------
@@ -295,16 +372,8 @@ function greet(summary) {
   $('greeting-text').textContent = tracked === 0
     ? 'Fresh receipt. What do you promise yourself today?'
     : `Yesterday you kept ${summary.done.length} and still owe ${summary.open.length}. What do you promise today?`;
+  showReceipt();
   $('greeting').hidden = false;
-  $('task-title').focus();
-}
-
-function focusTask(taskId) {
-  const line = $(`task-${taskId}`);
-  if (!line) return;
-  line.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  line.classList.add('flash');
-  setTimeout(() => line.classList.remove('flash'), FLASH_MS);
 }
 
 function togglePause() {
@@ -326,15 +395,21 @@ function bindEvents() {
   $('greeting-close').addEventListener('click', () => {
     $('greeting').hidden = true;
   });
+  $('detail-back').addEventListener('click', showReceipt);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && detailId) showReceipt();
+  });
+  window.addEventListener('focus', focusPromiseInput);
   api.onState(render);
   api.onCheckIn(greet);
-  api.onFocusTask(focusTask);
+  api.onFocusTask(showDetail);
 }
 
 async function start() {
   bindEvents();
   resetForm();
   render(await api.getState());
+  focusPromiseInput();
 }
 
 start();
