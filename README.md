@@ -1,6 +1,6 @@
 # Keepr
 
-Keeps your promises and tasks, and reminds you when you need it so you don't miss what matters.
+Keepr keeps your promises and reminds you when you need it so you don't miss what matters the most
 
 ## Folders
 
