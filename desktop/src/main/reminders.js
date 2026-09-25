@@ -37,7 +37,7 @@ function checkReminders(state, now) {
   const steps = state.tasks.map((task) => stepTask(task, now));
   const nudge = stepNudge(state, now);
   const dueTasks = nudge.due ? openTasks(state.tasks) : steps.filter((step) => step.due).map((step) => step.task);
-  const alerts = isPaused(state, now) ? [] : dueTasks.map((task) => ({ taskId: task.id, ...taskMessage(task) }));
+  const alerts = isPaused(state, now) ? [] : dueTasks.map((task) => ({ kind: 'reminder', taskId: task.id, ...taskMessage(task) }));
   return {
     state: { ...state, tasks: steps.map((step) => step.task), nudgeNextAt: nudge.nudgeNextAt },
     alerts,

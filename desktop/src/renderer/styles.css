@@ -178,6 +178,7 @@ textarea { resize: vertical; min-height: 44px; }
 .check { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); }
 
 .error { margin: 0; color: var(--error); }
+.hint { margin: 0; font-size: 11px; color: var(--ink-soft); }
 
 .actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .actions.spread { justify-content: space-between; margin-top: 14px; }

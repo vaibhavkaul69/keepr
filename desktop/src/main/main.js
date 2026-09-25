@@ -12,6 +12,7 @@ const { checkReminders, pauseReminders, resumeReminders } = require('./reminders
 const { makeView, summarizeDay } = require('./view');
 const { taskMessage, checkInMessage } = require('./messages');
 const { showAlert } = require('./notify');
+const { cleanWebhookUrl, webhookPayload, sendWebhook } = require('./webhook');
 const { createWindow, showWindow, sendToWindow, allowQuit } = require('./window');
 const { createTray, updateTray } = require('./tray');
 const { setStartAtLogin } = require('./startup');
@@ -41,10 +42,17 @@ function openTask(taskId) {
   if (taskId) sendToWindow('focus-task', taskId);
 }
 
+// Shows the desktop notification, and also POSTs it to the webhook when one is set.
+function deliver(alert) {
+  showAlert(alert, openTask);
+  const url = state.settings.webhookUrl;
+  if (url) sendWebhook(url, webhookPayload(alert, new Date()));
+}
+
 function tick() {
   const result = checkReminders(state, new Date());
   commit(result.state);
-  result.alerts.forEach((alert) => showAlert(alert, openTask));
+  result.alerts.forEach(deliver);
 }
 
 // The first time Keepr sees a new day, it shows yesterday's work and asks to plan today.
@@ -56,7 +64,7 @@ function checkIn() {
   commit({ ...state, lastOpenDay: today });
   showWindow();
   sendToWindow('checkin', summary);
-  showAlert({ taskId: null, ...checkInMessage(summary) }, openTask);
+  deliver({ kind: 'check-in', taskId: null, ...checkInMessage(summary) });
 }
 
 function onWake() {
@@ -71,9 +79,13 @@ function saveSettings(input) {
 }
 
 // Shows the first open task's reminder, or a sample when nothing is open.
-function testReminder() {
+// Sends to the webhook URL typed in Settings, so it can be tested before saving.
+async function testReminder(webhookInput) {
   const first = openTasks(state.tasks)[0] ?? { id: null, title: 'Keepr', description: 'Reminders are working.' };
-  showAlert({ taskId: first.id, ...taskMessage(first) }, openTask);
+  const alert = { kind: 'test', taskId: first.id, ...taskMessage(first) };
+  const url = cleanWebhookUrl(webhookInput);
+  showAlert(alert, openTask);
+  return { webhook: url ? await sendWebhook(url, webhookPayload(alert, new Date())) : null };
 }
 
 function readTask(input, now) {

@@ -26,6 +26,28 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 - **Snooze** moves a task's next reminder 15 minutes out. **Pause** stops all reminders for an hour. Reminders due during a pause are skipped.
 - A reminder missed while the laptop was asleep fires once when it wakes, not once for every slot it missed.
 
+## Webhook
+
+In Settings, add a webhook URL. Every notification Keepr shows is also POSTed there as JSON. That covers task reminders, the morning check-in and test reminders:
+
+```json
+{
+  "text": "Open chargebacks\nTwo to be solved today",
+  "content": "Open chargebacks\nTwo to be solved today",
+  "app": "Keepr",
+  "kind": "reminder",
+  "title": "Open chargebacks",
+  "description": "Two to be solved today",
+  "taskId": "…",
+  "sentAt": "2026-09-25T12:00:00.000Z"
+}
+```
+
+- `text` is what a Slack incoming webhook shows, and `content` is what Discord shows. So a Slack or Discord webhook URL works as it is.
+- `kind` is `reminder`, `check-in` or `test`.
+- "send a test reminder" in Settings uses the URL typed in the box, even before you save, and shows how the webhook replied.
+- A failed webhook is logged and skipped, with no retry. The desktop notification still shows.
+
 ## Where data lives
 
 - Run from source (`npm start`): `desktop/data/keepr.json`. Git ignores this file.

@@ -14,10 +14,12 @@ const SNOOZE_MINUTES = 15;
 const PAUSE_MINUTES = 60;
 const MAX_TITLE = 200;
 const MAX_DESCRIPTION = 1000;
+const WEBHOOK_TIMEOUT_MS = 10 * 1000;
 
 const DEFAULT_SETTINGS = {
   nudge: { type: 'daily', times: ['10:00', '12:00', '14:00', '16:00', '18:00'] },
   startAtLogin: true,
+  webhookUrl: '',
 };
 
 module.exports = {
@@ -32,5 +34,6 @@ module.exports = {
   PAUSE_MINUTES,
   MAX_TITLE,
   MAX_DESCRIPTION,
+  WEBHOOK_TIMEOUT_MS,
   DEFAULT_SETTINGS,
 };

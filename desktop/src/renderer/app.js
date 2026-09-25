@@ -353,16 +353,37 @@ async function submitTask(event) {
 // ---------- settings ----------
 
 function openSettings() {
-  const { nudge, startAtLogin } = view.settings;
+  const { nudge, startAtLogin, webhookUrl } = view.settings;
   fillSchedule('nudge', nudge);
   $('start-at-login').checked = startAtLogin;
+  $('webhook-url').value = webhookUrl ?? '';
+  $('settings-status').hidden = true;
   showError($('settings-error'), null);
   $('settings').showModal();
 }
 
 async function saveSettings() {
-  const input = { nudge: readSchedule('nudge'), startAtLogin: $('start-at-login').checked };
+  const input = {
+    nudge: readSchedule('nudge'),
+    startAtLogin: $('start-at-login').checked,
+    webhookUrl: $('webhook-url').value,
+  };
   if (await run(() => api.saveSettings(input), $('settings-error'))) $('settings').close();
+}
+
+// Sends a test reminder to the desktop and to the webhook URL in the box, then shows how the webhook replied.
+async function sendTest() {
+  const status = $('settings-status');
+  status.textContent = 'sending...';
+  status.hidden = false;
+  showError($('settings-error'), null);
+  try {
+    const { webhook } = await api.testReminder($('webhook-url').value);
+    status.textContent = webhook ? `Desktop notification sent. ${webhook.message}` : 'Desktop notification sent.';
+  } catch (err) {
+    status.hidden = true;
+    showError($('settings-error'), err);
+  }
 }
 
 // ---------- messages from the app ----------
@@ -391,7 +412,7 @@ function bindEvents() {
   $('open-settings').addEventListener('click', openSettings);
   $('settings-save').addEventListener('click', saveSettings);
   $('settings-cancel').addEventListener('click', () => $('settings').close());
-  $('test-reminder').addEventListener('click', () => run(() => api.testReminder(), $('settings-error')));
+  $('test-reminder').addEventListener('click', sendTest);
   $('greeting-close').addEventListener('click', () => {
     $('greeting').hidden = true;
   });
