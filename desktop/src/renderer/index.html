@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'">
+  <title>Keepr</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="../../assets/icon.png" alt="" width="36" height="36">
+      <div>
+        <h1>Keepr</h1>
+        <p id="today" class="muted"></p>
+      </div>
+    </div>
+    <div class="row">
+      <button id="pause" class="ghost" type="button"></button>
+      <button id="open-settings" class="ghost" type="button">Settings</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="greeting" class="card greeting" hidden>
+      <h2>New day. Let's plan it.</h2>
+      <p id="greeting-text"></p>
+      <button id="greeting-close" class="ghost" type="button">Got it</button>
+    </section>
+
+    <section class="card">
+      <h2>Yesterday</h2>
+      <div id="yesterday"></div>
+    </section>
+
+    <section class="card">
+      <h2 id="form-heading">Add a task</h2>
+      <form id="task-form" autocomplete="off">
+        <input id="task-title" placeholder="What will you finish today?" maxlength="200">
+        <label class="field">Remind me
+          <select id="task-type">
+            <option value="none">with the daily nudges only</option>
+            <option value="daily">at set times every day</option>
+            <option value="every">every few minutes</option>
+            <option value="once">once, at a set time</option>
+          </select>
+        </label>
+        <div class="fields" data-schedule="task" data-for="daily" hidden>
+          <input id="task-times" placeholder="11:00, 14:00, 17:00">
+        </div>
+        <div class="fields inline" data-schedule="task" data-for="every" hidden>
+          Every <input id="task-minutes" type="number" min="1" max="1440" value="60">
+          min for the next <input id="task-hours" type="number" min="0.25" step="0.25" placeholder="all">
+          hours
+        </div>
+        <div class="fields" data-schedule="task" data-for="once" hidden>
+          <input id="task-at" type="datetime-local">
+        </div>
+        <p id="form-error" class="error" hidden></p>
+        <div class="row">
+          <button id="form-submit" type="submit">Add task</button>
+          <button id="form-cancel" class="ghost" type="button" hidden>Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Open <span id="open-count" class="count"></span></h2>
+      <ul id="open-list" class="tasks"></ul>
+      <p id="open-empty" class="muted">Nothing open. Add what you promised yourself today.</p>
+    </section>
+
+    <section class="card">
+      <h2>Done today</h2>
+      <ul id="done-list" class="tasks"></ul>
+      <p id="done-empty" class="muted">Nothing yet.</p>
+    </section>
+  </main>
+
+  <dialog id="settings">
+    <form id="settings-form" method="dialog" autocomplete="off">
+      <h2>Settings</h2>
+      <label class="field">Tone
+        <select id="tone">
+          <option value="mixed">Mixed</option>
+          <option value="sarcastic">Sarcastic</option>
+          <option value="cunning">Cunning</option>
+          <option value="motivating">Motivating</option>
+        </select>
+      </label>
+      <label class="field">Nudge me about all open tasks
+        <select id="nudge-type">
+          <option value="daily">at set times every day</option>
+          <option value="every">every few minutes</option>
+          <option value="none">never</option>
+        </select>
+      </label>
+      <div class="fields" data-schedule="nudge" data-for="daily" hidden>
+        <input id="nudge-times" placeholder="10:00, 12:00, 14:00, 16:00, 18:00">
+      </div>
+      <div class="fields inline" data-schedule="nudge" data-for="every" hidden>
+        Every <input id="nudge-minutes" type="number" min="1" max="1440" value="60"> min
+      </div>
+      <label class="check"><input id="start-at-login" type="checkbox"> Start Keepr when I log in</label>
+      <p id="settings-error" class="error" hidden></p>
+      <div class="row spread">
+        <button id="test-reminder" class="ghost" type="button">Send a test reminder</button>
+        <div class="row">
+          <button id="settings-cancel" class="ghost" type="button">Cancel</button>
+          <button id="settings-save" type="button">Save</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "name": "keepr-desktop",
+  "productName": "Keepr",
+  "version": "0.1.0",
+  "description": "Keeps your promises and tasks, and reminds you with desktop notifications.",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --mac --dir",
+    "dist": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.keepr.desktop",
+    "productName": "Keepr",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": "dmg",
+      "icon": "build/icon.icns"
+    },
+    "directories": {
+      "buildResources": "build"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  }
+}
