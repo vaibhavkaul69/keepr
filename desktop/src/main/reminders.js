@@ -1,8 +1,7 @@
-const { MAX_ALERTS } = require('./constants');
 const { addMinutes, toIso } = require('./dates');
 const { nextTime } = require('./schedule');
 const { openTasks } = require('./tasks');
-const { taskMessage, nudgeMessage, tooManyMessage } = require('./messages');
+const { taskMessage } = require('./messages');
 
 function isPaused(state, now) {
   return Boolean(state.pausedUntil) && new Date(state.pausedUntil) > now;
@@ -17,34 +16,31 @@ function resumeReminders(state) {
 }
 
 // A reminder missed while the laptop slept fires once, then moves to the next future time.
-function stepTask(task, now, quiet, tone, random) {
-  if (task.doneAt) return { task, alert: null };
+function stepTask(task, now) {
+  if (task.doneAt) return { task, due: false };
   const due = task.nextAt ? new Date(task.nextAt) : nextTime(task.schedule, now);
-  if (!due || due > now) return { task: { ...task, nextAt: toIso(due) }, alert: null };
-  const next = { ...task, nextAt: toIso(nextTime(task.schedule, now)) };
-  const alert = quiet ? null : { taskId: task.id, ...taskMessage(task.title, tone, random) };
-  return { task: next, alert };
+  if (!due || due > now) return { task: { ...task, nextAt: toIso(due) }, due: false };
+  return { task: { ...task, nextAt: toIso(nextTime(task.schedule, now)) }, due: true };
 }
 
-// The daily nudge lists every open task. It stays quiet when nothing is open.
-function stepNudge(state, now, quiet, random) {
-  const { nudge, tone } = state.settings;
+function stepNudge(state, now) {
+  const { nudge } = state.settings;
   const due = state.nudgeNextAt ? new Date(state.nudgeNextAt) : nextTime(nudge, now);
-  if (!due || due > now) return { nudgeNextAt: toIso(due), alert: null };
-  const titles = openTasks(state.tasks).map((task) => task.title);
-  const alert = quiet || titles.length === 0 ? null : { taskId: null, ...nudgeMessage(titles, tone, random) };
-  return { nudgeNextAt: toIso(nextTime(nudge, now)), alert };
+  if (!due || due > now) return { nudgeNextAt: toIso(due), due: false };
+  return { nudgeNextAt: toIso(nextTime(nudge, now)), due: true };
 }
 
-// Finds due reminders and moves each one to its next time. While paused, due reminders are skipped, not saved for later.
-function checkReminders(state, now, random = Math.random) {
-  const quiet = isPaused(state, now);
-  const steps = state.tasks.map((task) => stepTask(task, now, quiet, state.settings.tone, random));
-  const nudge = stepNudge(state, now, quiet, random);
-  const alerts = [...steps.map((step) => step.alert), nudge.alert].filter(Boolean);
+// Finds due reminders and moves each one to its next time. A daily nudge reminds about every open task, one notification each.
+// A task gets at most one notification per check, even when its own reminder and the nudge are due together.
+// While paused, due reminders are skipped, not saved for later.
+function checkReminders(state, now) {
+  const steps = state.tasks.map((task) => stepTask(task, now));
+  const nudge = stepNudge(state, now);
+  const dueTasks = nudge.due ? openTasks(state.tasks) : steps.filter((step) => step.due).map((step) => step.task);
+  const alerts = isPaused(state, now) ? [] : dueTasks.map((task) => ({ taskId: task.id, ...taskMessage(task) }));
   return {
     state: { ...state, tasks: steps.map((step) => step.task), nudgeNextAt: nudge.nudgeNextAt },
-    alerts: alerts.length > MAX_ALERTS ? [{ taskId: null, ...tooManyMessage(alerts.length) }] : alerts,
+    alerts,
   };
 }
 

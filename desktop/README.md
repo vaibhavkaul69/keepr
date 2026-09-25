@@ -1,6 +1,6 @@
 # Keepr Desktop
 
-A menu bar app that keeps your task list for the day and nags you about it with desktop notifications. The tone can be sarcastic, cunning, motivating or mixed.
+A menu bar app that keeps your task list for the day and reminds you about it with desktop notifications. A notification shows only the task's title and description.
 
 ## Run it
 
@@ -14,14 +14,15 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 
 ## What it does
 
-- **Tasks.** Add what you promised yourself today. Each task can have its own reminders:
+- **The receipt.** The window is a paper receipt of the promises you made yourself today. Finish a task and it gets a KEPT stamp. The totals show what you promised, kept and still owe.
+- **Tasks.** Add what you promised yourself today: a title and, if you like, a description. Clicking a notification opens Keepr on that task. Each task can have its own reminders:
   - only the daily nudges
   - at set times every day, like `11:00, 14:00, 17:00`
   - every N minutes, for the next N hours or until done ("every 60 min for the next 12 hours")
   - once, at a set date and time
-- **Daily nudges.** At the times you pick in Settings, one notification lists every open task. The default is 10:00, 12:00, 14:00, 16:00 and 18:00.
+- **Daily nudges.** At the times you pick in Settings, every open task gets its own notification. The default is 10:00, 12:00, 14:00, 16:00 and 18:00.
 - **Morning check-in.** The first time you open or unlock the laptop on a new day, Keepr shows what you finished yesterday and what is still open, then asks you to plan today.
-- **Menu bar.** Closing the window keeps Keepr running in the menu bar. The icon shows how many tasks are open. From there you can pause reminders for an hour or quit.
+- **Menu bar.** Closing the window keeps Keepr running in the menu bar. The icon shows how many tasks are open. The menu has two items: Open Keepr and Quit Keepr.
 - **Snooze** moves a task's next reminder 15 minutes out. **Pause** stops all reminders for an hour. Reminders due during a pause are skipped.
 - A reminder missed while the laptop was asleep fires once when it wakes, not once for every slot it missed.
 

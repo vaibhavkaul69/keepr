@@ -12,14 +12,10 @@ const TRAY_ICON_PATH = path.join(ASSETS_DIR, 'trayTemplate.png');
 const TICK_MS = 20 * 1000;
 const SNOOZE_MINUTES = 15;
 const PAUSE_MINUTES = 60;
-const MAX_ALERTS = 3;
 const MAX_TITLE = 200;
-
-const TONES = ['sarcastic', 'cunning', 'motivating'];
-const TONE_CHOICES = [...TONES, 'mixed'];
+const MAX_DESCRIPTION = 1000;
 
 const DEFAULT_SETTINGS = {
-  tone: 'mixed',
   nudge: { type: 'daily', times: ['10:00', '12:00', '14:00', '16:00', '18:00'] },
   startAtLogin: true,
 };
@@ -34,9 +30,7 @@ module.exports = {
   TICK_MS,
   SNOOZE_MINUTES,
   PAUSE_MINUTES,
-  MAX_ALERTS,
   MAX_TITLE,
-  TONES,
-  TONE_CHOICES,
+  MAX_DESCRIPTION,
   DEFAULT_SETTINGS,
 };

@@ -2,9 +2,15 @@ const api = window.keepr;
 
 const CONFIRM_MS = 3000;
 const FLASH_MS = 2000;
+const BAR_COUNT = 56;
 
 let view = null;
+let lastJson = '';
 let editingId = null;
+
+// Last known state of each task ('open' or 'kept'). New lines "print" in and newly kept lines get stamped.
+// It stays empty until the first render, so nothing animates on launch.
+let seen = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,11 +22,14 @@ function el(tag, props = {}, children = []) {
   return node;
 }
 
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 function formatWhen(iso) {
   const date = new Date(iso);
-  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const isToday = date.toDateString() === new Date().toDateString();
-  return isToday ? time : `${date.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+  return isToday ? formatTime(iso) : `${date.toLocaleDateString([], { weekday: 'short' })} ${formatTime(iso)}`;
 }
 
 // A local "YYYY-MM-DDTHH:MM" value for a datetime-local input.
@@ -53,6 +62,15 @@ async function run(call, box) {
   }
 }
 
+// Bar and gap widths (1–3px) worked out from `text`, so each day gets its own barcode.
+function barWidths(text) {
+  let hash = 2166136261;
+  return Array.from({ length: BAR_COUNT }, (_item, index) => {
+    hash = Math.imul(hash ^ text.charCodeAt(index % text.length), 16777619) >>> 0;
+    return 1 + (hash % 3);
+  });
+}
+
 // ---------- schedule fields (shared by the task form and settings) ----------
 
 function showScheduleFields(prefix) {
@@ -65,6 +83,11 @@ function showScheduleFields(prefix) {
 function readSchedule(prefix) {
   const value = (name) => $(`${prefix}-${name}`)?.value ?? '';
   return { type: value('type'), times: value('times'), minutes: value('minutes'), hours: value('hours'), at: value('at') };
+}
+
+function hoursLeft(until) {
+  const hours = (new Date(until) - Date.now()) / 3600000;
+  return hours > 0 ? Math.ceil(hours * 4) / 4 : '';
 }
 
 function fillSchedule(prefix, schedule) {
@@ -80,98 +103,135 @@ function fillSchedule(prefix, schedule) {
   showScheduleFields(prefix);
 }
 
-function hoursLeft(until) {
-  const hours = (new Date(until) - Date.now()) / 3600000;
-  return hours > 0 ? Math.ceil(hours * 4) / 4 : '';
-}
-
-// ---------- rendering ----------
+// ---------- header, yesterday, totals ----------
 
 function renderHeader() {
-  $('today').textContent = new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-  $('pause').textContent = view.paused ? `Paused till ${formatWhen(view.pausedUntil)}. Resume` : 'Pause 1 hour';
+  const now = new Date();
+  $('date').textContent = now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+  $('receipt-no').textContent = `NO. ${view.today.replaceAll('-', '')}`;
+  $('hold').hidden = !view.paused;
+  $('hold').textContent = 'On hold';
+  $('pause').textContent = view.paused ? `on hold till ${formatTime(view.pausedUntil)}. resume` : 'pause 1 hour';
 }
 
-function titleList(titles) {
-  return el('ul', { className: 'yesterday-list' }, titles.map((title) => el('li', { textContent: title })));
+function pastLine(mark, title, tag) {
+  return el('li', {}, [
+    el('span', { className: 'mark', textContent: mark }),
+    el('span', { textContent: title }),
+    ...(tag ? [el('span', { className: 'owed-tag', textContent: tag })] : []),
+  ]);
 }
 
 function renderYesterday() {
   const { done, open } = view.yesterday;
-  const box = $('yesterday');
   if (done.length === 0 && open.length === 0) {
-    box.replaceChildren(el('p', { className: 'muted', textContent: 'Nothing tracked yesterday.' }));
+    $('yesterday').replaceChildren(el('p', { className: 'empty', textContent: "Nothing on yesterday's receipt." }));
     return;
   }
-  box.replaceChildren(
-    el('p', { className: 'muted', textContent: `Done (${done.length})` }),
-    done.length ? titleList(done) : el('p', { textContent: 'Nothing finished.' }),
-    el('p', { className: 'muted', textContent: `Still open (${open.length})` }),
-    open.length ? titleList(open) : el('p', { textContent: 'All clear.' }),
-  );
+  $('yesterday').replaceChildren(el('ul', { className: 'past' }, [
+    ...done.map((title) => pastLine('✓', title, null)),
+    ...open.map((title) => pastLine('·', title, 'still owed')),
+  ]));
 }
 
-// Delete asks for a second click, so one stray click never loses a task.
-function deleteButton(task) {
-  const button = el('button', { className: 'ghost small', type: 'button', textContent: 'Delete' });
-  let armed = false;
-  button.addEventListener('click', () => {
-    if (armed) return run(() => api.removeTask(task.id));
-    armed = true;
-    button.textContent = 'Sure?';
+function renderTotals() {
+  const kept = view.doneToday.length;
+  const owed = view.openTasks.length;
+  $('total-promised').textContent = kept + owed;
+  $('total-kept').textContent = kept;
+  $('total-owed').textContent = owed;
+  const bars = barWidths(`${view.today}:${kept}:${owed}`).map((width, index) => {
+    const bar = el('span', { className: index % 2 ? 'gap' : '' });
+    bar.style.width = `${width}px`;
+    return bar;
+  });
+  $('barcode').replaceChildren(...bars);
+}
+
+// ---------- today's lines ----------
+
+function linkButton(label, onClick) {
+  const button = el('button', { className: 'link', type: 'button', textContent: label });
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+// "void" asks for a second click, so one stray click never loses a task.
+function voidButton(task) {
+  const button = linkButton('void', () => {
+    if (button.dataset.armed) return run(() => api.removeTask(task.id));
+    button.dataset.armed = 'yes';
+    button.textContent = 'sure?';
     setTimeout(() => {
-      armed = false;
-      button.textContent = 'Delete';
+      delete button.dataset.armed;
+      button.textContent = 'void';
     }, CONFIRM_MS);
   });
   return button;
 }
 
-function smallButton(label, onClick) {
-  const button = el('button', { className: 'ghost small', type: 'button', textContent: label });
-  button.addEventListener('click', onClick);
-  return button;
+function descriptionLine(task) {
+  return task.description ? [el('span', { className: 'desc', textContent: task.description })] : [];
 }
 
-function openTaskItem(task) {
-  const checkbox = el('input', { type: 'checkbox', title: 'Mark done' });
-  checkbox.addEventListener('change', () => run(() => api.setDone(task.id, true)));
-  const next = task.nextAt ? ` · next ${formatWhen(task.nextAt)}` : '';
-  return el('li', { className: 'task', id: `task-${task.id}` }, [
-    checkbox,
-    el('span', { className: 'task-title', textContent: task.title }),
-    el('span', { className: 'task-meta', textContent: `${task.scheduleText}${next}` }),
-    el('div', { className: 'task-actions' }, [
-      smallButton('Snooze 15 min', () => run(() => api.snooze(task.id))),
-      smallButton('Edit', () => startEdit(task)),
-      deleteButton(task),
+function lineTop(task, when) {
+  return el('span', { className: 'line-top' }, [
+    el('span', { className: 'what', textContent: task.title }),
+    el('span', { className: 'dots' }),
+    el('span', { className: 'when', textContent: when }),
+  ]);
+}
+
+function openLine(task) {
+  const box = el('button', { className: 'box', type: 'button', textContent: '[ ]', title: 'Mark kept' });
+  box.addEventListener('mouseenter', () => { box.textContent = '[✓]'; });
+  box.addEventListener('mouseleave', () => { box.textContent = '[ ]'; });
+  box.addEventListener('click', () => run(() => api.setDone(task.id, true)));
+  const isNew = seen && !seen.has(task.id);
+  return el('li', { className: isNew ? 'line printed' : 'line', id: `task-${task.id}` }, [
+    box,
+    lineTop(task, task.nextAt ? formatWhen(task.nextAt) : '—'),
+    ...descriptionLine(task),
+    el('span', { className: 'sub' }, [
+      task.scheduleText.toLowerCase(),
+      linkButton('snooze', () => run(() => api.snooze(task.id))),
+      linkButton('edit', () => startEdit(task)),
+      voidButton(task),
     ]),
   ]);
 }
 
-function doneTaskItem(task) {
-  const checkbox = el('input', { type: 'checkbox', checked: true, title: 'Mark not done' });
-  checkbox.addEventListener('change', () => run(() => api.setDone(task.id, false)));
-  return el('li', { className: 'task done', id: `task-${task.id}` }, [
-    checkbox,
-    el('span', { className: 'task-title', textContent: task.title }),
-    el('span', { className: 'task-meta', textContent: `Done at ${formatWhen(task.doneAt)}` }),
+function keptLine(task) {
+  const box = el('button', { className: 'box', type: 'button', textContent: '[x]', title: 'Mark not kept' });
+  box.addEventListener('click', () => run(() => api.setDone(task.id, false)));
+  const justKept = seen && seen.get(task.id) !== 'kept';
+  return el('li', { className: 'line kept', id: `task-${task.id}` }, [
+    box,
+    lineTop(task, formatTime(task.doneAt)),
+    ...descriptionLine(task),
+    el('span', { className: justKept ? 'stamp thump' : 'stamp', textContent: 'Kept' }),
   ]);
 }
 
-function renderLists() {
-  $('open-count').textContent = view.openTasks.length ? `(${view.openTasks.length})` : '';
-  $('open-list').replaceChildren(...view.openTasks.map(openTaskItem));
-  $('open-empty').hidden = view.openTasks.length > 0;
-  $('done-list').replaceChildren(...view.doneToday.map(doneTaskItem));
-  $('done-empty').hidden = view.doneToday.length > 0;
+function renderLines() {
+  $('lines').replaceChildren(...view.openTasks.map(openLine), ...view.doneToday.map(keptLine));
+  $('lines-empty').hidden = view.openTasks.length + view.doneToday.length > 0;
+  seen = new Map([
+    ...view.openTasks.map((task) => [task.id, 'open']),
+    ...view.doneToday.map((task) => [task.id, 'kept']),
+  ]);
 }
 
+// Skips identical updates. The app sends state every 20 seconds, and redrawing would reset hover and "sure?".
 function render(next) {
+  const json = JSON.stringify(next);
+  if (json === lastJson) return;
+  lastJson = json;
   view = next;
   renderHeader();
   renderYesterday();
-  renderLists();
+  renderLines();
+  renderTotals();
 }
 
 // ---------- task form ----------
@@ -180,8 +240,8 @@ function resetForm() {
   editingId = null;
   $('task-form').reset();
   fillSchedule('task', { type: 'none' });
-  $('form-heading').textContent = 'Add a task';
-  $('form-submit').textContent = 'Add task';
+  $('form-heading').textContent = 'New promise';
+  $('form-submit').textContent = 'Print promise';
   $('form-cancel').hidden = true;
   showError($('form-error'), null);
 }
@@ -189,17 +249,22 @@ function resetForm() {
 function startEdit(task) {
   editingId = task.id;
   $('task-title').value = task.title;
+  $('task-description').value = task.description ?? '';
   fillSchedule('task', task.schedule);
-  $('form-heading').textContent = 'Edit task';
-  $('form-submit').textContent = 'Save';
+  $('form-heading').textContent = 'Reprint promise';
+  $('form-submit').textContent = 'Reprint';
   $('form-cancel').hidden = false;
   $('task-title').focus();
-  $('task-form').scrollIntoView({ behavior: 'smooth' });
+  $('task-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function submitTask(event) {
   event.preventDefault();
-  const input = { title: $('task-title').value, schedule: readSchedule('task') };
+  const input = {
+    title: $('task-title').value,
+    description: $('task-description').value,
+    schedule: readSchedule('task'),
+  };
   const call = editingId ? () => api.editTask(editingId, input) : () => api.addTask(input);
   if (await run(call, $('form-error'))) {
     resetForm();
@@ -211,8 +276,7 @@ async function submitTask(event) {
 // ---------- settings ----------
 
 function openSettings() {
-  const { tone, nudge, startAtLogin } = view.settings;
-  $('tone').value = tone;
+  const { nudge, startAtLogin } = view.settings;
   fillSchedule('nudge', nudge);
   $('start-at-login').checked = startAtLogin;
   showError($('settings-error'), null);
@@ -220,7 +284,7 @@ function openSettings() {
 }
 
 async function saveSettings() {
-  const input = { tone: $('tone').value, nudge: readSchedule('nudge'), startAtLogin: $('start-at-login').checked };
+  const input = { nudge: readSchedule('nudge'), startAtLogin: $('start-at-login').checked };
   if (await run(() => api.saveSettings(input), $('settings-error'))) $('settings').close();
 }
 
@@ -229,18 +293,18 @@ async function saveSettings() {
 function greet(summary) {
   const tracked = summary.done.length + summary.open.length;
   $('greeting-text').textContent = tracked === 0
-    ? 'What will you finish today? Add each task below and pick when to be reminded.'
-    : `Yesterday you finished ${summary.done.length} and left ${summary.open.length} open. What will you finish today?`;
+    ? 'Fresh receipt. What do you promise yourself today?'
+    : `Yesterday you kept ${summary.done.length} and still owe ${summary.open.length}. What do you promise today?`;
   $('greeting').hidden = false;
   $('task-title').focus();
 }
 
 function focusTask(taskId) {
-  const item = $(`task-${taskId}`);
-  if (!item) return;
-  item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  item.classList.add('flash');
-  setTimeout(() => item.classList.remove('flash'), FLASH_MS);
+  const line = $(`task-${taskId}`);
+  if (!line) return;
+  line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  line.classList.add('flash');
+  setTimeout(() => line.classList.remove('flash'), FLASH_MS);
 }
 
 function togglePause() {

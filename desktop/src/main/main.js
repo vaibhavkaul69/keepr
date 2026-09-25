@@ -32,7 +32,7 @@ function commit(next) {
   if (changed) saveState(dataFile, state);
   const view = makeView(state, new Date());
   sendToWindow('state', view);
-  updateTray(view, trayActions);
+  updateTray(view);
   return view;
 }
 
@@ -70,16 +70,18 @@ function saveSettings(input) {
   return commit({ ...state, settings, nudgeNextAt: null });
 }
 
+// Shows the first open task's reminder, or a sample when nothing is open.
 function testReminder() {
-  const first = openTasks(state.tasks)[0];
-  const title = first ? first.title : 'your first task';
-  showAlert({ taskId: first?.id ?? null, ...taskMessage(title, state.settings.tone) }, openTask);
+  const first = openTasks(state.tasks)[0] ?? { id: null, title: 'Keepr', description: 'Reminders are working.' };
+  showAlert({ taskId: first.id, ...taskMessage(first) }, openTask);
+}
+
+function readTask(input, now) {
+  return { title: input?.title, description: input?.description, schedule: cleanSchedule(input?.schedule, now) };
 }
 
 const trayActions = {
   open: showWindow,
-  pause: () => commit(pauseReminders(state, PAUSE_MINUTES, new Date())),
-  resume: () => commit(resumeReminders(state)),
   quit: () => app.quit(),
 };
 
@@ -87,16 +89,15 @@ const handlers = {
   'state:get': () => makeView(state, new Date()),
   'task:add': (input) => {
     const now = new Date();
-    const task = makeTask({ title: input?.title, schedule: cleanSchedule(input?.schedule, now) }, now, randomUUID());
-    return commit(addTask(state, task));
+    return commit(addTask(state, makeTask(readTask(input, now), now, randomUUID())));
   },
-  'task:edit': (id, input) => commit(editTask(state, id, { title: input?.title, schedule: cleanSchedule(input?.schedule, new Date()) })),
+  'task:edit': (id, input) => commit(editTask(state, id, readTask(input, new Date()))),
   'task:done': (id, done) => commit(markDone(state, id, Boolean(done), new Date())),
   'task:snooze': (id) => commit(snoozeTask(state, id, SNOOZE_MINUTES, new Date())),
   'task:remove': (id) => commit(removeTask(state, id)),
   'settings:save': saveSettings,
-  'reminders:pause': trayActions.pause,
-  'reminders:resume': trayActions.resume,
+  'reminders:pause': () => commit(pauseReminders(state, PAUSE_MINUTES, new Date())),
+  'reminders:resume': () => commit(resumeReminders(state)),
   'reminders:test': testReminder,
 };
 
@@ -113,7 +114,7 @@ function start() {
   state = loadState(dataFile);
   registerHandlers();
   createWindow({ show: !process.argv.includes(HIDDEN_FLAG) });
-  createTray();
+  createTray(trayActions);
   setStartAtLogin(state.settings.startAtLogin);
   commit(state);
   checkIn();

@@ -1,4 +1,4 @@
-const { MAX_TITLE } = require('./constants');
+const { MAX_TITLE, MAX_DESCRIPTION } = require('./constants');
 const { addMinutes } = require('./dates');
 
 function cleanTitle(title) {
@@ -7,11 +7,17 @@ function cleanTitle(title) {
   return text.slice(0, MAX_TITLE);
 }
 
+// Optional. Shown as the notification text.
+function cleanDescription(description) {
+  return String(description ?? '').trim().slice(0, MAX_DESCRIPTION);
+}
+
 // `nextAt` stays null until the reminder check works out the next time.
 function makeTask(input, now, id) {
   return {
     id,
     title: cleanTitle(input.title),
+    description: cleanDescription(input.description),
     schedule: input.schedule,
     createdAt: now.toISOString(),
     doneAt: null,
@@ -28,7 +34,12 @@ function addTask(state, task) {
 }
 
 function editTask(state, id, input) {
-  return changeTask(state, id, { title: cleanTitle(input.title), schedule: input.schedule, nextAt: null });
+  return changeTask(state, id, {
+    title: cleanTitle(input.title),
+    description: cleanDescription(input.description),
+    schedule: input.schedule,
+    nextAt: null,
+  });
 }
 
 function markDone(state, id, done, now) {
