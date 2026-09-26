@@ -1,5 +1,6 @@
 const { MAX_TITLE, MAX_DESCRIPTION } = require('./constants');
 const { addMinutes, dayKey } = require('./dates');
+const { renewSchedule } = require('./schedule');
 
 function cleanTitle(title) {
   const text = String(title ?? '').trim();
@@ -59,9 +60,41 @@ function openTasks(tasks) {
   return tasks.filter((task) => !task.doneAt);
 }
 
-// An open task added before `today` (a "YYYY-MM-DD" day).
-function isCarried(task, today) {
-  return !task.doneAt && dayKey(task.createdAt) < today;
+// The day a task is meant for: the day it was added, or the day it was last moved to.
+function plannedDay(task) {
+  return task.plannedFor ?? dayKey(task.createdAt);
 }
 
-module.exports = { makeTask, addTask, editTask, markDone, snoozeTask, removeTask, openTasks, isCarried };
+// An open task meant for a day before `today` (a "YYYY-MM-DD" day).
+function isCarried(task, today) {
+  return !task.doneAt && plannedDay(task) < today;
+}
+
+// Moves carried tasks to today. Each keeps the day it missed in `missedDays`, and its reminders start again.
+function moveToToday(state, ids, now) {
+  const today = dayKey(now);
+  const tasks = state.tasks.map((task) => {
+    if (!ids.includes(task.id) || !isCarried(task, today)) return task;
+    return {
+      ...task,
+      plannedFor: today,
+      missedDays: [...(task.missedDays ?? []), plannedDay(task)],
+      schedule: renewSchedule(task.schedule, now),
+      nextAt: null,
+    };
+  });
+  return { ...state, tasks };
+}
+
+module.exports = {
+  makeTask,
+  addTask,
+  editTask,
+  markDone,
+  snoozeTask,
+  removeTask,
+  openTasks,
+  plannedDay,
+  isCarried,
+  moveToToday,
+};

@@ -23,7 +23,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
   - once, at a set date and time
 - **Two lists**, opened from home:
   - **Today's promises**: open tasks added today, plus everything you kept today.
-  - **Carried over**: open tasks from earlier days.
+  - **Carried over**: open tasks from earlier days, grouped by the day you promised them ("Fri 25 Sept · promised, not kept"), newest day first. **move to today** on a task, **move all to today** at the top, or **Move to today** in its details brings it back to Today's promises. Its reminders start again, and the days it missed stay in its details.
 - **Details.** Click a task, or its notification, to see its description, schedule, next reminder and status. Snooze, edit and void are there too. **← back** or Esc goes back.
 - **Notifications** show only the task title and its description.
 - **Daily nudges.** At the times set in Settings, every open task gets its own notification. The default is 10:00, 12:00, 14:00, 16:00 and 18:00.

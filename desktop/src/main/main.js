@@ -7,7 +7,7 @@ const { dayKey, addDays } = require('./dates');
 const { loadState, saveState } = require('./store');
 const { cleanSchedule } = require('./schedule');
 const { cleanSettings } = require('./settings');
-const { makeTask, addTask, editTask, markDone, snoozeTask, removeTask, openTasks } = require('./tasks');
+const { makeTask, addTask, editTask, markDone, snoozeTask, removeTask, openTasks, moveToToday } = require('./tasks');
 const { checkReminders, pauseReminders, resumeReminders } = require('./reminders');
 const { makeView, summarizeDay } = require('./view');
 const { taskMessage, checkInMessage } = require('./messages');
@@ -108,6 +108,7 @@ const handlers = {
   'task:done': (id, done) => commit(markDone(state, id, Boolean(done), new Date())),
   'task:snooze': (id) => commit(snoozeTask(state, id, SNOOZE_MINUTES, new Date())),
   'task:remove': (id) => commit(removeTask(state, id)),
+  'task:move-today': (ids) => commit(moveToToday(state, Array.isArray(ids) ? ids : [], new Date())),
   'settings:save': saveSettings,
   'reminders:pause': () => commit(pauseReminders(state, PAUSE_MINUTES, new Date())),
   'reminders:resume': () => commit(resumeReminders(state)),

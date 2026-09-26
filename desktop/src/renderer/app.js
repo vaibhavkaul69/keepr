@@ -49,6 +49,11 @@ function formatDay(iso) {
   return new Date(iso).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+// A "YYYY-MM-DD" day, read as local midnight.
+function formatDayKey(day) {
+  return formatDay(`${day}T00:00:00`);
+}
+
 // A local "YYYY-MM-DDTHH:MM" value for a datetime-local input.
 function toLocalInput(iso) {
   const date = new Date(iso);
@@ -211,12 +216,28 @@ function renderSections() {
 
 // ---------- list ----------
 
+// `when` is text, or a button for carried tasks.
 function lineTop(task, when) {
   return el('span', { className: 'line-top' }, [
     el('span', { className: 'what', textContent: task.title }),
     el('span', { className: 'dots' }),
-    el('span', { className: 'when', textContent: when }),
+    el('span', { className: 'when' }, [when]),
   ]);
+}
+
+function moveButton(ids, label) {
+  return linkButton(label, (event) => {
+    event.stopPropagation();
+    run(() => api.moveToToday(ids));
+  });
+}
+
+// Carried tasks sit under a "promised, not kept" day heading, so they only mention earlier misses.
+function lineNote(task, carried) {
+  if (carried) return task.missedDays?.length ? `also missed ${task.missedDays.map(formatDayKey).join(', ').toLowerCase()}` : '';
+  const movedFrom = task.missedDays?.at(-1);
+  const schedule = task.scheduleText.toLowerCase();
+  return movedFrom ? `${schedule} · moved from ${formatDayKey(movedFrom).toLowerCase()}` : schedule;
 }
 
 function openLine(task, carried) {
@@ -228,11 +249,11 @@ function openLine(task, carried) {
     run(() => api.setDone(task.id, true));
   });
   const isNew = seen && !seen.has(task.id);
-  const sub = carried ? `since ${formatDay(task.createdAt).toLowerCase()}` : task.scheduleText.toLowerCase();
+  const when = carried ? moveButton([task.id], 'move to today') : (task.nextAt ? formatWhen(task.nextAt) : '—');
   const line = el('li', { className: isNew ? 'line printed' : 'line', title: 'Open details' }, [
     box,
-    lineTop(task, task.nextAt ? formatWhen(task.nextAt) : '—'),
-    el('span', { className: 'sub', textContent: sub }),
+    lineTop(task, when),
+    ...(lineNote(task, carried) ? [el('span', { className: 'sub', textContent: lineNote(task, carried) })] : []),
   ]);
   line.addEventListener('click', () => showDetail(task.id));
   return line;
@@ -254,12 +275,25 @@ function keptLine(task) {
   return line;
 }
 
+// Carried tasks grouped by the day they were promised for, newest day first.
+function carriedLines() {
+  const days = [...new Set(view.carried.map((task) => task.plannedDay))];
+  return days.flatMap((day) => [
+    el('li', { className: 'day-head', textContent: `${formatDayKey(day)} · promised, not kept` }),
+    ...view.carried.filter((task) => task.plannedDay === day).map((task) => openLine(task, true)),
+  ]);
+}
+
 function renderList() {
   const carried = listName === 'carried';
   const lines = carried
-    ? view.carried.map((task) => openLine(task, true))
+    ? carriedLines()
     : [...view.todayOpen.map((task) => openLine(task, false)), ...view.doneToday.map(keptLine)];
+  const moveAll = carried && view.carried.length > 1
+    ? [moveButton(view.carried.map((task) => task.id), `move all ${view.carried.length} to today`)]
+    : [];
   $('list-heading').textContent = LISTS[listName].heading;
+  $('list-tools').replaceChildren(...moveAll);
   $('lines').replaceChildren(...lines);
   $('lines-empty').textContent = LISTS[listName].empty;
   $('lines-empty').hidden = lines.length > 0;
@@ -275,11 +309,18 @@ function fact(label, value) {
   return el('div', {}, [el('dt', { textContent: label }), el('dd', { textContent: value })]);
 }
 
+function isCarriedTask(task) {
+  return !task.doneAt && task.plannedDay < view.today;
+}
+
 function detailActions(task) {
   const kept = Boolean(task.doneAt);
   const toggle = el('button', { className: 'print', type: 'button', textContent: kept ? 'Mark not kept' : 'Mark kept' });
   toggle.addEventListener('click', () => run(() => api.setDone(task.id, !kept)));
+  const move = el('button', { className: 'print', type: 'button', textContent: 'Move to today' });
+  move.addEventListener('click', () => run(() => api.moveToToday([task.id])));
   return [
+    ...(isCarriedTask(task) ? [move] : []),
     toggle,
     ...(kept ? [] : [linkButton('snooze 15 min', () => run(() => api.snooze(task.id)))]),
     linkButton('edit', () => {
@@ -308,7 +349,9 @@ function renderDetail() {
     fact('Schedule', task.scheduleText),
     fact('Next reminder', !kept && task.nextAt ? formatWhen(task.nextAt) : '—'),
     fact('Added', `${formatDay(task.createdAt)}, ${formatTime(task.createdAt)}`),
-    fact('Status', kept ? `Kept at ${formatTime(task.doneAt)}` : 'Still owed'),
+    fact('Promised for', formatDayKey(task.plannedDay)),
+    ...(task.missedDays?.length ? [fact('Missed', task.missedDays.map(formatDayKey).join(', '))] : []),
+    fact('Status', kept ? `Kept at ${formatTime(task.doneAt)}` : isCarriedTask(task) ? 'Not kept, carried over' : 'Still owed'),
   );
   $('detail-actions').replaceChildren(...detailActions(task));
 }

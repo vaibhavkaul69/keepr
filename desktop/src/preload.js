@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('keepr', {
   setDone: invoke('task:done'),
   snooze: invoke('task:snooze'),
   removeTask: invoke('task:remove'),
+  moveToToday: invoke('task:move-today'),
   saveSettings: invoke('settings:save'),
   pause: invoke('reminders:pause'),
   resume: invoke('reminders:resume'),

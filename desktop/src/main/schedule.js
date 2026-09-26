@@ -112,6 +112,13 @@ function nextTime(schedule, after) {
   return null;
 }
 
+// Restarts a timed run for a task moved to today. "Every minute" runs until the end of today again.
+// Other schedules are left as they are.
+function renewSchedule(schedule, now) {
+  if (schedule?.type !== 'every' || !schedule.until) return schedule;
+  return { ...schedule, from: now.toISOString(), until: endOfDay(now).toISOString() };
+}
+
 function describeSchedule(schedule) {
   if (schedule?.type === 'daily') return `Every day at ${schedule.times.join(', ')}`;
   if (schedule?.type === 'hourly') return 'Every hour on the hour, 6 am to 12 midnight, every day';
@@ -126,4 +133,4 @@ function describeSchedule(schedule) {
   return 'Daily nudges only';
 }
 
-module.exports = { parseTimes, cleanSchedule, nextTime, describeSchedule };
+module.exports = { parseTimes, cleanSchedule, nextTime, renewSchedule, describeSchedule };
