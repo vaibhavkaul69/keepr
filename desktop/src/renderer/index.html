@@ -42,15 +42,11 @@
             <select id="task-type">
               <option value="none">with the daily nudges</option>
               <option value="minute">every minute, till the end of today</option>
-              <option value="hourly">every hour till midnight, every day</option>
+              <option value="hourly">every hour, 6 am to 12 midnight, every day</option>
               <option value="daily">at set times every day</option>
               <option value="once">once, at a set time</option>
             </select>
           </label>
-          <div class="pick" data-schedule="task" data-for="hourly" hidden>
-            starting at <input id="task-start" class="short" placeholder="20:00">
-            <span class="hint">empty = one hour from now</span>
-          </div>
           <div class="pick" data-schedule="task" data-for="daily" hidden>
             at <input id="task-times" placeholder="11:00, 14:00, 17:00">
           </div>

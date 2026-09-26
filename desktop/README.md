@@ -18,7 +18,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 - **Reminder choices for a task:**
   - only the daily nudges
   - every minute, from the next minute until the end of today
-  - every hour until midnight, every day, starting one hour from now or at a time you type (like `20:00`)
+  - every hour on the hour, 6 am to 12 midnight, every day. The first one is the next full hour: set at 7:51 pm, it goes 8, 9, 10, 11 and 12, then 6 am onwards the next day. It repeats daily until you mark the task kept.
   - at set times every day, like `11:00, 14:00, 17:00`
   - once, at a set date and time
 - **Two lists**, opened from home:

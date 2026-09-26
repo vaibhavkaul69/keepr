@@ -123,7 +123,6 @@ function readSchedule(prefix) {
     type: value('type'),
     times: value('times'),
     minutes: value('minutes'),
-    start: value('start'),
     at: value('at'),
   };
 }
@@ -142,7 +141,6 @@ function fillSchedule(prefix, schedule) {
   set('type', formType(prefix, schedule));
   set('times', schedule?.type === 'daily' ? schedule.times.join(', ') : '');
   set('minutes', schedule?.type === 'every' ? schedule.minutes : 60);
-  set('start', schedule?.type === 'hourly' ? schedule.start : '');
   set('at', schedule?.type === 'once' ? toLocalInput(schedule.at) : '');
   showScheduleFields(prefix);
 }
