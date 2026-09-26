@@ -49,10 +49,13 @@ function deliver(alert) {
   if (webhookUrl) sendWebhook(webhookUrl, webhookHeaders ?? [], webhookPayload(alert, new Date()));
 }
 
-function tick() {
-  const result = checkReminders(state, new Date());
-  commit(result.state);
+// Works out next reminder times, sends any that are due, then saves. Runs on the timer and after every change,
+// so a new or edited schedule shows its next reminder right away instead of "—".
+function tick(next = state) {
+  const result = checkReminders(next, new Date());
+  const view = commit(result.state);
   result.alerts.forEach(deliver);
+  return view;
 }
 
 // The first time Keepr sees a new day, it shows yesterday's work and asks to plan today.
@@ -75,7 +78,7 @@ function onWake() {
 function saveSettings(input) {
   const settings = cleanSettings(input, new Date());
   setStartAtLogin(settings.startAtLogin);
-  return commit({ ...state, settings, nudgeNextAt: null, carryNextAt: null });
+  return tick({ ...state, settings, nudgeNextAt: null, carryNextAt: null });
 }
 
 // Shows the first open task's reminder, or a sample when nothing is open.
@@ -102,13 +105,13 @@ const handlers = {
   'state:get': () => makeView(state, new Date()),
   'task:add': (input) => {
     const now = new Date();
-    return commit(addTask(state, makeTask(readTask(input, now), now, randomUUID())));
+    return tick(addTask(state, makeTask(readTask(input, now), now, randomUUID())));
   },
-  'task:edit': (id, input) => commit(editTask(state, id, readTask(input, new Date()))),
-  'task:done': (id, done) => commit(markDone(state, id, Boolean(done), new Date())),
-  'task:snooze': (id) => commit(snoozeTask(state, id, SNOOZE_MINUTES, new Date())),
-  'task:remove': (id) => commit(removeTask(state, id)),
-  'task:move-today': (ids) => commit(moveToToday(state, Array.isArray(ids) ? ids : [], new Date())),
+  'task:edit': (id, input) => tick(editTask(state, id, readTask(input, new Date()))),
+  'task:done': (id, done) => tick(markDone(state, id, Boolean(done), new Date())),
+  'task:snooze': (id) => tick(snoozeTask(state, id, SNOOZE_MINUTES, new Date())),
+  'task:remove': (id) => tick(removeTask(state, id)),
+  'task:move-today': (ids) => tick(moveToToday(state, Array.isArray(ids) ? ids : [], new Date())),
   'settings:save': saveSettings,
   'reminders:pause': () => commit(pauseReminders(state, PAUSE_MINUTES, new Date())),
   'reminders:resume': () => commit(resumeReminders(state)),
