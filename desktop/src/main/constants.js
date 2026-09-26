@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS = {
   nudge: { type: 'daily', times: ['10:00', '12:00', '14:00', '16:00', '18:00'] },
   startAtLogin: true,
   webhookUrl: '',
+  // Extra request headers for the webhook, like [{ name: 'Authorization', value: 'Bearer …' }].
+  webhookHeaders: [],
   // One daily reminder for every task carried over from an earlier day. Blank turns it off.
   carryTime: '11:00',
 };

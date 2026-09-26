@@ -375,10 +375,12 @@ async function submitTask(event) {
 // ---------- settings ----------
 
 function openSettings() {
-  const { nudge, startAtLogin, webhookUrl, carryTime } = view.settings;
+  const { nudge, startAtLogin, webhookUrl, webhookHeaders, carryTime } = view.settings;
   fillSchedule('nudge', nudge);
   $('start-at-login').checked = startAtLogin;
   $('webhook-url').value = webhookUrl ?? '';
+  fillHeaders(webhookHeaders);
+  showHeadersBox();
   $('carry-time').value = carryTime ?? '';
   $('settings-status').hidden = true;
   showError($('settings-error'), null);
@@ -390,19 +392,54 @@ async function saveSettings() {
     nudge: readSchedule('nudge'),
     startAtLogin: $('start-at-login').checked,
     webhookUrl: $('webhook-url').value,
+    webhookHeaders: readHeaders(),
     carryTime: $('carry-time').value,
   };
   if (await run(() => api.saveSettings(input), $('settings-error'))) $('settings').close();
 }
 
-// Sends a test reminder to the desktop and to the webhook URL in the box, then shows how the webhook replied.
+// ---------- webhook headers ----------
+
+function headerRow(row = { name: '', value: '' }) {
+  const name = el('input', { className: 'header-name', placeholder: 'Header-Name', value: row.name, spellcheck: false });
+  const value = el('input', { className: 'header-value', placeholder: 'value', value: row.value, spellcheck: false });
+  const item = el('li', {}, [name, value]);
+  const remove = linkButton('×', () => item.remove());
+  remove.title = 'Remove header';
+  item.append(remove);
+  return item;
+}
+
+function fillHeaders(rows) {
+  $('webhook-headers').replaceChildren(...(rows ?? []).map(headerRow));
+}
+
+function readHeaders() {
+  return [...$('webhook-headers').children].map((item) => ({
+    name: item.querySelector('.header-name').value,
+    value: item.querySelector('.header-value').value,
+  }));
+}
+
+// Headers only make sense once there is a URL to send them to.
+function showHeadersBox() {
+  $('webhook-headers-box').hidden = !$('webhook-url').value.trim();
+}
+
+function addHeader() {
+  const row = headerRow();
+  $('webhook-headers').append(row);
+  row.querySelector('input').focus();
+}
+
+// Sends a test reminder to the desktop and to the webhook URL and headers in the boxes, then shows how the webhook replied.
 async function sendTest() {
   const status = $('settings-status');
   status.textContent = 'sending...';
   status.hidden = false;
   showError($('settings-error'), null);
   try {
-    const { webhook } = await api.testReminder($('webhook-url').value);
+    const { webhook } = await api.testReminder({ url: $('webhook-url').value, headers: readHeaders() });
     status.textContent = webhook ? `Desktop notification sent. ${webhook.message}` : 'Desktop notification sent.';
   } catch (err) {
     status.hidden = true;
@@ -448,6 +485,8 @@ function bindEvents() {
   $('settings-save').addEventListener('click', saveSettings);
   $('settings-cancel').addEventListener('click', () => $('settings').close());
   $('test-reminder').addEventListener('click', sendTest);
+  $('webhook-url').addEventListener('input', showHeadersBox);
+  $('add-header').addEventListener('click', addHeader);
   $('greeting-close').addEventListener('click', () => {
     $('greeting').hidden = true;
   });

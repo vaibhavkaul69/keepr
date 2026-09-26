@@ -12,7 +12,7 @@ const { checkReminders, pauseReminders, resumeReminders } = require('./reminders
 const { makeView, summarizeDay } = require('./view');
 const { taskMessage, checkInMessage } = require('./messages');
 const { showAlert } = require('./notify');
-const { cleanWebhookUrl, webhookPayload, sendWebhook } = require('./webhook');
+const { cleanWebhookUrl, cleanHeaders, webhookPayload, sendWebhook } = require('./webhook');
 const { createWindow, showWindow, sendToWindow, allowQuit } = require('./window');
 const { createTray, updateTray } = require('./tray');
 const { setStartAtLogin } = require('./startup');
@@ -45,8 +45,8 @@ function openTask(taskId) {
 // Shows the desktop notification, and also POSTs it to the webhook when one is set.
 function deliver(alert) {
   showAlert(alert, openTask);
-  const url = state.settings.webhookUrl;
-  if (url) sendWebhook(url, webhookPayload(alert, new Date()));
+  const { webhookUrl, webhookHeaders } = state.settings;
+  if (webhookUrl) sendWebhook(webhookUrl, webhookHeaders ?? [], webhookPayload(alert, new Date()));
 }
 
 function tick() {
@@ -79,13 +79,14 @@ function saveSettings(input) {
 }
 
 // Shows the first open task's reminder, or a sample when nothing is open.
-// Sends to the webhook URL typed in Settings, so it can be tested before saving.
+// Sends to the webhook URL and headers typed in Settings, so they can be tested before saving.
 async function testReminder(webhookInput) {
+  const url = cleanWebhookUrl(webhookInput?.url);
+  const headers = cleanHeaders(webhookInput?.headers);
   const first = openTasks(state.tasks)[0] ?? { id: null, title: 'Keepr', description: 'Reminders are working.' };
   const alert = { kind: 'test', taskId: first.id, ...taskMessage(first) };
-  const url = cleanWebhookUrl(webhookInput);
   showAlert(alert, openTask);
-  return { webhook: url ? await sendWebhook(url, webhookPayload(alert, new Date())) : null };
+  return { webhook: url ? await sendWebhook(url, headers, webhookPayload(alert, new Date())) : null };
 }
 
 function readTask(input, now) {

@@ -1,5 +1,5 @@
 const { cleanSchedule, parseTimes } = require('./schedule');
-const { cleanWebhookUrl } = require('./webhook');
+const { cleanWebhookUrl, cleanHeaders } = require('./webhook');
 
 // Checks settings sent from the screen and returns a clean copy. Throws a readable error.
 function cleanSettings(input, now) {
@@ -9,6 +9,7 @@ function cleanSettings(input, now) {
     nudge,
     startAtLogin: input?.startAtLogin !== false,
     webhookUrl: cleanWebhookUrl(input?.webhookUrl),
+    webhookHeaders: cleanHeaders(input?.webhookHeaders),
     carryTime: parseTimes(input?.carryTime)[0] ?? '',
   };
 }

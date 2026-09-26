@@ -145,6 +145,11 @@
         <input id="webhook-url" type="url" placeholder="https://hooks.slack.com/services/..." spellcheck="false">
       </label>
       <p class="hint">Optional. Every notification is also POSTed here as JSON. Works with Slack and Discord webhooks.</p>
+      <div id="webhook-headers-box" hidden>
+        <p class="pick">headers (optional)</p>
+        <ul id="webhook-headers" class="headers"></ul>
+        <button id="add-header" class="link" type="button">+ add header</button>
+      </div>
       <label class="check"><input id="start-at-login" type="checkbox"> start Keepr when I log in</label>
       <p id="settings-status" class="hint" hidden></p>
       <p id="settings-error" class="error" hidden></p>

@@ -36,7 +36,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 
 ## Webhook
 
-In Settings, add a webhook URL. Every notification Keepr shows is also POSTed there as JSON. That covers task reminders, the morning check-in and test reminders:
+In Settings, add a webhook URL and, if the server needs them, headers such as `Authorization: Bearer …`. Every notification Keepr shows is also POSTed there as JSON. That covers task reminders, the morning check-in and test reminders:
 
 ```json
 {
@@ -53,7 +53,9 @@ In Settings, add a webhook URL. Every notification Keepr shows is also POSTed th
 
 - `text` is what a Slack incoming webhook shows, and `content` is what Discord shows. So a Slack or Discord webhook URL works as it is.
 - `kind` is `reminder`, `carried` (a task from an earlier day), `check-in` or `test`.
-- "send a test reminder" in Settings uses the URL typed in the box, even before you save, and shows how the webhook replied.
+- "send a test reminder" in Settings uses the URL and headers typed in the boxes, even before you save, and shows how the webhook replied.
+- Headers are saved in the data file as plain text, so treat that file like a password file.
+- To post to the PeerUp #keepr Slack channel, use `https://web.api.peerup.co.in/internal/keepr/alerts`. It needs no headers.
 - A failed webhook is logged and skipped, with no retry. The desktop notification still shows.
 
 ## Where data lives
