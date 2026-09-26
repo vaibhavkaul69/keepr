@@ -3,7 +3,7 @@ const path = require('node:path');
 const { DEFAULT_SETTINGS } = require('./constants');
 
 function emptyState() {
-  return { tasks: [], settings: { ...DEFAULT_SETTINGS }, nudgeNextAt: null, pausedUntil: null, lastOpenDay: null };
+  return { tasks: [], settings: { ...DEFAULT_SETTINGS }, nudgeNextAt: null, carryNextAt: null, pausedUntil: null, lastOpenDay: null };
 }
 
 // Fills in any field an older data file is missing.

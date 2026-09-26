@@ -1,5 +1,5 @@
 const { MAX_TITLE, MAX_DESCRIPTION } = require('./constants');
-const { addMinutes } = require('./dates');
+const { addMinutes, dayKey } = require('./dates');
 
 function cleanTitle(title) {
   const text = String(title ?? '').trim();
@@ -59,4 +59,9 @@ function openTasks(tasks) {
   return tasks.filter((task) => !task.doneAt);
 }
 
-module.exports = { makeTask, addTask, editTask, markDone, snoozeTask, removeTask, openTasks };
+// An open task added before `today` (a "YYYY-MM-DD" day).
+function isCarried(task, today) {
+  return !task.doneAt && dayKey(task.createdAt) < today;
+}
+
+module.exports = { makeTask, addTask, editTask, markDone, snoozeTask, removeTask, openTasks, isCarried };

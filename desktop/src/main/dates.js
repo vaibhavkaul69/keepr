@@ -28,6 +28,13 @@ function atTime(date, time) {
   return d;
 }
 
+// The last millisecond of `date`'s local day.
+function endOfDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 function toIso(date) {
   return date ? date.toISOString() : null;
 }
@@ -36,4 +43,4 @@ function formatDateTime(date) {
   return new Date(date).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
-module.exports = { MINUTE_MS, dayKey, addDays, addMinutes, atTime, toIso, formatDateTime };
+module.exports = { MINUTE_MS, dayKey, addDays, addMinutes, atTime, endOfDay, toIso, formatDateTime };

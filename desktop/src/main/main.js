@@ -75,7 +75,7 @@ function onWake() {
 function saveSettings(input) {
   const settings = cleanSettings(input, new Date());
   setStartAtLogin(settings.startAtLogin);
-  return commit({ ...state, settings, nudgeNextAt: null });
+  return commit({ ...state, settings, nudgeNextAt: null, carryNextAt: null });
 }
 
 // Shows the first open task's reminder, or a sample when nothing is open.

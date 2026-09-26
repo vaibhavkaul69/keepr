@@ -9,7 +9,9 @@
 <body>
   <div class="desk">
     <div class="paper-shadow">
-      <article id="receipt" class="receipt">
+
+      <!-- Home: adding a promise comes first. -->
+      <article id="home" class="receipt">
         <header class="head">
           <img class="logo" src="../../assets/icon.png" alt="" width="40" height="40">
           <p class="shop">KEEPR</p>
@@ -18,7 +20,7 @@
             <span id="date"></span>
             <span id="receipt-no"></span>
           </div>
-          <p id="hold" class="stamp hold" hidden></p>
+          <p id="hold" class="stamp hold" hidden>On hold</p>
         </header>
 
         <section id="greeting" class="note" hidden>
@@ -29,25 +31,8 @@
 
         <hr class="cut">
 
-        <section>
-          <h2 class="label">Carried over from yesterday</h2>
-          <div id="yesterday"></div>
-        </section>
-
-        <hr class="cut">
-
-        <section>
-          <h2 class="label">Today's promises</h2>
-          <div class="lines-scroll">
-            <ul id="lines" class="lines"></ul>
-          </div>
-          <p id="lines-empty" class="empty">Nothing printed yet. Write your first promise below.</p>
-        </section>
-
-        <hr class="cut">
-
         <form id="task-form" autocomplete="off">
-          <h2 id="form-heading" class="label">New promise</h2>
+          <h2 id="form-heading" class="label">Today's promise</h2>
           <div class="write">
             <span class="caret">&gt;</span>
             <input id="task-title" placeholder="what's your next promise?" maxlength="200">
@@ -56,18 +41,18 @@
           <label class="pick">remind me
             <select id="task-type">
               <option value="none">with the daily nudges</option>
+              <option value="minute">every minute, till the end of today</option>
+              <option value="hourly">every hour till midnight, every day</option>
               <option value="daily">at set times every day</option>
-              <option value="every">every few minutes</option>
               <option value="once">once, at a set time</option>
             </select>
           </label>
+          <div class="pick" data-schedule="task" data-for="hourly" hidden>
+            starting at <input id="task-start" class="short" placeholder="20:00">
+            <span class="hint">empty = one hour from now</span>
+          </div>
           <div class="pick" data-schedule="task" data-for="daily" hidden>
             at <input id="task-times" placeholder="11:00, 14:00, 17:00">
-          </div>
-          <div class="pick" data-schedule="task" data-for="every" hidden>
-            every <input id="task-minutes" class="short" type="number" min="1" max="1440" value="60">
-            min for <input id="task-hours" class="short" type="number" min="0.25" step="0.25" placeholder="all">
-            hours
           </div>
           <div class="pick" data-schedule="task" data-for="once" hidden>
             on <input id="task-at" type="datetime-local">
@@ -76,14 +61,31 @@
           <div class="actions">
             <button id="form-submit" class="print" type="submit">Print promise</button>
             <button id="form-cancel" class="link" type="button" hidden>cancel</button>
+            <span id="form-done" class="hint" hidden>printed ✓</span>
           </div>
         </form>
 
         <hr class="cut">
 
+        <nav class="sections">
+          <button id="open-today" class="section-row" type="button">
+            <span class="section-name">Today's promises</span>
+            <span class="dots"></span>
+            <span id="today-count" class="section-count"></span>
+            <span class="arrow">&rarr;</span>
+          </button>
+          <button id="open-carried" class="section-row" type="button">
+            <span class="section-name">Carried over</span>
+            <span class="dots"></span>
+            <span id="carried-count" class="section-count"></span>
+            <span class="arrow">&rarr;</span>
+          </button>
+        </nav>
+
+        <hr class="cut">
+
         <dl class="totals">
-          <div><dt>Promised</dt><dd id="total-promised">0</dd></div>
-          <div><dt>Kept</dt><dd id="total-kept">0</dd></div>
+          <div><dt>Kept today</dt><dd id="total-kept">0</dd></div>
           <div class="owed"><dt>Still owed</dt><dd id="total-owed">0</dd></div>
         </dl>
 
@@ -96,6 +98,15 @@
         </nav>
       </article>
 
+      <!-- A list of promises: today's, or the ones carried over. -->
+      <article id="list" class="receipt" hidden>
+        <button id="list-back" class="link back" type="button">&larr; back</button>
+        <h2 id="list-heading" class="label"></h2>
+        <ul id="lines" class="lines"></ul>
+        <p id="lines-empty" class="empty"></p>
+      </article>
+
+      <!-- One promise, with everything about it. -->
       <article id="detail" class="receipt" hidden>
         <button id="detail-back" class="link back" type="button">&larr; back</button>
         <h2 class="label">Promise</h2>
@@ -126,6 +137,10 @@
       <div class="pick" data-schedule="nudge" data-for="every" hidden>
         every <input id="nudge-minutes" class="short" type="number" min="1" max="1440" value="60"> min
       </div>
+      <label class="pick">remind me about carried-over promises daily at
+        <input id="carry-time" class="short" placeholder="11:00">
+      </label>
+      <p class="hint">Empty turns it off.</p>
       <label class="pick">webhook URL
         <input id="webhook-url" type="url" placeholder="https://hooks.slack.com/services/..." spellcheck="false">
       </label>

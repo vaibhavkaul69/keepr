@@ -1,6 +1,6 @@
-const { dayKey, addDays } = require('./dates');
+const { dayKey } = require('./dates');
 const { describeSchedule } = require('./schedule');
-const { openTasks } = require('./tasks');
+const { openTasks, isCarried } = require('./tasks');
 const { isPaused } = require('./reminders');
 
 // What got done on `day`, and what was added by then but is still open.
@@ -26,8 +26,9 @@ function makeView(state, now) {
     nudgeNextAt: state.nudgeNextAt,
     settings: state.settings,
     openTasks: openTasks(state.tasks).map(taskView),
+    todayOpen: openTasks(state.tasks).filter((task) => !isCarried(task, today)).map(taskView),
+    carried: state.tasks.filter((task) => isCarried(task, today)).map(taskView),
     doneToday: state.tasks.filter((task) => task.doneAt && dayKey(task.doneAt) === today).map(taskView),
-    yesterday: summarizeDay(state.tasks, dayKey(addDays(now, -1))),
   };
 }
 

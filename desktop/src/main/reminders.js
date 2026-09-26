@@ -1,6 +1,6 @@
-const { addMinutes, toIso } = require('./dates');
+const { addMinutes, dayKey, toIso } = require('./dates');
 const { nextTime } = require('./schedule');
-const { openTasks } = require('./tasks');
+const { openTasks, isCarried } = require('./tasks');
 const { taskMessage } = require('./messages');
 
 function isPaused(state, now) {
@@ -15,31 +15,52 @@ function resumeReminders(state) {
   return { ...state, pausedUntil: null };
 }
 
-// A reminder missed while the laptop slept fires once, then moves to the next future time.
+function carrySchedule(settings) {
+  return settings.carryTime ? { type: 'daily', times: [settings.carryTime] } : { type: 'none' };
+}
+
+// Moves a schedule to its next time. A time missed while the laptop slept counts as due once.
+function stepSchedule(schedule, nextAt, now) {
+  const due = nextAt ? new Date(nextAt) : nextTime(schedule, now);
+  if (!due || due > now) return { nextAt: toIso(due), due: false };
+  return { nextAt: toIso(nextTime(schedule, now)), due: true };
+}
+
 function stepTask(task, now) {
   if (task.doneAt) return { task, due: false };
-  const due = task.nextAt ? new Date(task.nextAt) : nextTime(task.schedule, now);
-  if (!due || due > now) return { task: { ...task, nextAt: toIso(due) }, due: false };
-  return { task: { ...task, nextAt: toIso(nextTime(task.schedule, now)) }, due: true };
+  const step = stepSchedule(task.schedule, task.nextAt, now);
+  return { task: { ...task, nextAt: step.nextAt }, due: step.due };
 }
 
-function stepNudge(state, now) {
-  const { nudge } = state.settings;
-  const due = state.nudgeNextAt ? new Date(state.nudgeNextAt) : nextTime(nudge, now);
-  if (!due || due > now) return { nudgeNextAt: toIso(due), due: false };
-  return { nudgeNextAt: toIso(nextTime(nudge, now)), due: true };
-}
-
-// Finds due reminders and moves each one to its next time. A daily nudge reminds about every open task, one notification each.
-// A task gets at most one notification per check, even when its own reminder and the nudge are due together.
+// Finds due reminders and moves each one to its next time. Three things can make a task due:
+//   its own schedule, the daily nudge (every open task), and the carried-over reminder (tasks from earlier days).
+// A task gets at most one notification per check, however many of these are due together.
 // While paused, due reminders are skipped, not saved for later.
 function checkReminders(state, now) {
+  const today = dayKey(now);
   const steps = state.tasks.map((task) => stepTask(task, now));
-  const nudge = stepNudge(state, now);
-  const dueTasks = nudge.due ? openTasks(state.tasks) : steps.filter((step) => step.due).map((step) => step.task);
-  const alerts = isPaused(state, now) ? [] : dueTasks.map((task) => ({ kind: 'reminder', taskId: task.id, ...taskMessage(task) }));
+  const nudge = stepSchedule(state.settings.nudge, state.nudgeNextAt, now);
+  const carry = stepSchedule(carrySchedule(state.settings), state.carryNextAt, now);
+  const open = openTasks(state.tasks);
+  const dueIds = new Set([
+    ...steps.filter((step) => step.due).map((step) => step.task.id),
+    ...(nudge.due ? open.map((task) => task.id) : []),
+    ...(carry.due ? open.filter((task) => isCarried(task, today)).map((task) => task.id) : []),
+  ]);
+  const alerts = isPaused(state, now)
+    ? []
+    : open.filter((task) => dueIds.has(task.id)).map((task) => ({
+      kind: isCarried(task, today) ? 'carried' : 'reminder',
+      taskId: task.id,
+      ...taskMessage(task),
+    }));
   return {
-    state: { ...state, tasks: steps.map((step) => step.task), nudgeNextAt: nudge.nudgeNextAt },
+    state: {
+      ...state,
+      tasks: steps.map((step) => step.task),
+      nudgeNextAt: nudge.nextAt,
+      carryNextAt: carry.nextAt,
+    },
     alerts,
   };
 }

@@ -14,16 +14,24 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 
 ## What it does
 
-- **The receipt.** The window is a paper receipt of the promises you made yourself today. Finish a task and it gets a KEPT stamp. The totals show what you promised, kept and still owe.
-- **Tasks.** Add what you promised yourself today: a title and, if you like, a description. Click a task, or its notification, to open its details: description, schedule, next reminder and status, with snooze, edit and void. **← back** returns to the receipt. A long list scrolls inside the receipt. Each task can have its own reminders:
+- **Home is for adding promises.** The first thing you see is "what's your next promise?". Type a title, add a description if you like, pick when to be reminded, and press **Print promise**.
+- **Reminder choices for a task:**
   - only the daily nudges
+  - every minute, from the next minute until the end of today
+  - every hour until midnight, every day, starting one hour from now or at a time you type (like `20:00`)
   - at set times every day, like `11:00, 14:00, 17:00`
-  - every N minutes, for the next N hours or until done ("every 60 min for the next 12 hours")
   - once, at a set date and time
-- **Daily nudges.** At the times you pick in Settings, every open task gets its own notification. The default is 10:00, 12:00, 14:00, 16:00 and 18:00.
-- **Morning check-in.** The first time you open or unlock the laptop on a new day, Keepr shows what you finished yesterday and what is still open, then asks you to plan today.
+- **Two lists**, opened from home:
+  - **Today's promises**: open tasks added today, plus everything you kept today.
+  - **Carried over**: open tasks from earlier days.
+- **Details.** Click a task, or its notification, to see its description, schedule, next reminder and status. Snooze, edit and void are there too. **← back** or Esc goes back.
+- **Notifications** show only the task title and its description.
+- **Daily nudges.** At the times set in Settings, every open task gets its own notification. The default is 10:00, 12:00, 14:00, 16:00 and 18:00.
+- **Carried-over reminder.** Once a day, at 11:00 by default, every task carried over from an earlier day gets its own notification. Change the time in Settings, or leave it empty to turn it off.
+- A task gets at most one notification per check, even when its own reminder, a nudge and the carried-over reminder are all due together.
+- **Morning check-in.** The first time you open or unlock the laptop on a new day, Keepr shows how yesterday went and asks you to plan today.
 - **Menu bar.** Closing the window keeps Keepr running in the menu bar. The icon shows how many tasks are open. The menu has two items: Open Keepr and Quit Keepr.
-- **Snooze** moves a task's next reminder 15 minutes out. **Pause** stops all reminders for an hour. Reminders due during a pause are skipped.
+- **Pause** stops all reminders for an hour. Reminders due during a pause are skipped.
 - A reminder missed while the laptop was asleep fires once when it wakes, not once for every slot it missed.
 
 ## Webhook
@@ -44,7 +52,7 @@ In Settings, add a webhook URL. Every notification Keepr shows is also POSTed th
 ```
 
 - `text` is what a Slack incoming webhook shows, and `content` is what Discord shows. So a Slack or Discord webhook URL works as it is.
-- `kind` is `reminder`, `check-in` or `test`.
+- `kind` is `reminder`, `carried` (a task from an earlier day), `check-in` or `test`.
 - "send a test reminder" in Settings uses the URL typed in the box, even before you save, and shows how the webhook replied.
 - A failed webhook is logged and skipped, with no retry. The desktop notification still shows.
 

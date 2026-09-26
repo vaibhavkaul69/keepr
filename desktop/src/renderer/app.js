@@ -1,14 +1,25 @@
 const api = window.keepr;
 
 const CONFIRM_MS = 3000;
+const DONE_MS = 2000;
 const BAR_COUNT = 56;
+
+const LISTS = {
+  today: { heading: "Today's promises", empty: 'Nothing promised today yet. Go back and add one.' },
+  carried: { heading: 'Carried over', empty: 'Nothing carried over. Clean slate.' },
+};
 
 let view = null;
 let lastJson = '';
 let editingId = null;
 
-// The task open on the details screen, or null when the receipt is showing.
+// Which screen is showing: 'home', 'list' or 'detail'.
+let screen = 'home';
+// Which list the list screen shows: 'today' or 'carried'.
+let listName = 'today';
+// The task on the details screen, and the screen "back" returns to.
 let detailId = null;
+let detailBack = 'home';
 
 // Last known state of each task ('open' or 'kept'). New lines "print" in and newly kept lines get stamped.
 // It stays empty until the first render, so nothing animates on launch.
@@ -32,6 +43,10 @@ function formatWhen(iso) {
   const date = new Date(iso);
   const isToday = date.toDateString() === new Date().toDateString();
   return isToday ? formatTime(iso) : `${date.toLocaleDateString([], { weekday: 'short' })} ${formatTime(iso)}`;
+}
+
+function formatDay(iso) {
+  return new Date(iso).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 // A local "YYYY-MM-DDTHH:MM" value for a datetime-local input.
@@ -73,85 +88,6 @@ function barWidths(text) {
   });
 }
 
-// ---------- schedule fields (shared by the task form and settings) ----------
-
-function showScheduleFields(prefix) {
-  const type = $(`${prefix}-type`).value;
-  document.querySelectorAll(`[data-schedule="${prefix}"]`).forEach((group) => {
-    group.hidden = group.dataset.for !== type;
-  });
-}
-
-function readSchedule(prefix) {
-  const value = (name) => $(`${prefix}-${name}`)?.value ?? '';
-  return { type: value('type'), times: value('times'), minutes: value('minutes'), hours: value('hours'), at: value('at') };
-}
-
-function hoursLeft(until) {
-  const hours = (new Date(until) - Date.now()) / 3600000;
-  return hours > 0 ? Math.ceil(hours * 4) / 4 : '';
-}
-
-function fillSchedule(prefix, schedule) {
-  const set = (name, value) => {
-    const input = $(`${prefix}-${name}`);
-    if (input) input.value = value;
-  };
-  set('type', schedule?.type ?? 'none');
-  set('times', schedule?.type === 'daily' ? schedule.times.join(', ') : '');
-  set('minutes', schedule?.type === 'every' ? schedule.minutes : 60);
-  set('hours', schedule?.type === 'every' && schedule.until ? hoursLeft(schedule.until) : '');
-  set('at', schedule?.type === 'once' ? toLocalInput(schedule.at) : '');
-  showScheduleFields(prefix);
-}
-
-// ---------- header, yesterday, totals ----------
-
-function renderHeader() {
-  const now = new Date();
-  $('date').textContent = now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
-  $('receipt-no').textContent = `NO. ${view.today.replaceAll('-', '')}`;
-  $('hold').hidden = !view.paused;
-  $('hold').textContent = 'On hold';
-  $('pause').textContent = view.paused ? `on hold till ${formatTime(view.pausedUntil)}. resume` : 'pause 1 hour';
-}
-
-function pastLine(mark, title, tag) {
-  return el('li', {}, [
-    el('span', { className: 'mark', textContent: mark }),
-    el('span', { textContent: title }),
-    ...(tag ? [el('span', { className: 'owed-tag', textContent: tag })] : []),
-  ]);
-}
-
-function renderYesterday() {
-  const { done, open } = view.yesterday;
-  if (done.length === 0 && open.length === 0) {
-    $('yesterday').replaceChildren(el('p', { className: 'empty', textContent: "Nothing on yesterday's receipt." }));
-    return;
-  }
-  $('yesterday').replaceChildren(el('ul', { className: 'past' }, [
-    ...done.map((title) => pastLine('✓', title, null)),
-    ...open.map((title) => pastLine('·', title, 'still owed')),
-  ]));
-}
-
-function renderTotals() {
-  const kept = view.doneToday.length;
-  const owed = view.openTasks.length;
-  $('total-promised').textContent = kept + owed;
-  $('total-kept').textContent = kept;
-  $('total-owed').textContent = owed;
-  const bars = barWidths(`${view.today}:${kept}:${owed}`).map((width, index) => {
-    const bar = el('span', { className: index % 2 ? 'gap' : '' });
-    bar.style.width = `${width}px`;
-    return bar;
-  });
-  $('barcode').replaceChildren(...bars);
-}
-
-// ---------- today's lines ----------
-
 function linkButton(label, onClick) {
   const button = el('button', { className: 'link', type: 'button', textContent: label });
   button.addEventListener('click', onClick);
@@ -172,9 +108,110 @@ function voidButton(task) {
   return button;
 }
 
-function descriptionLine(task) {
-  return task.description ? [el('span', { className: 'desc', textContent: task.description })] : [];
+// ---------- schedule fields (shared by the task form and settings) ----------
+
+function showScheduleFields(prefix) {
+  const type = $(`${prefix}-type`).value;
+  document.querySelectorAll(`[data-schedule="${prefix}"]`).forEach((group) => {
+    group.hidden = group.dataset.for !== type;
+  });
 }
+
+function readSchedule(prefix) {
+  const value = (name) => $(`${prefix}-${name}`)?.value ?? '';
+  return {
+    type: value('type'),
+    times: value('times'),
+    minutes: value('minutes'),
+    start: value('start'),
+    at: value('at'),
+  };
+}
+
+// The task form has no "every N minutes" choice. Older every-N tasks show as "every minute".
+function formType(prefix, schedule) {
+  const type = schedule?.type ?? 'none';
+  return prefix === 'task' && type === 'every' ? 'minute' : type;
+}
+
+function fillSchedule(prefix, schedule) {
+  const set = (name, value) => {
+    const input = $(`${prefix}-${name}`);
+    if (input) input.value = value;
+  };
+  set('type', formType(prefix, schedule));
+  set('times', schedule?.type === 'daily' ? schedule.times.join(', ') : '');
+  set('minutes', schedule?.type === 'every' ? schedule.minutes : 60);
+  set('start', schedule?.type === 'hourly' ? schedule.start : '');
+  set('at', schedule?.type === 'once' ? toLocalInput(schedule.at) : '');
+  showScheduleFields(prefix);
+}
+
+// ---------- screens ----------
+
+function showScreen(name) {
+  screen = name;
+  $('home').hidden = name !== 'home';
+  $('list').hidden = name !== 'list';
+  $('detail').hidden = name !== 'detail';
+  window.scrollTo(0, 0);
+  if (name === 'home') $('task-title').focus();
+}
+
+function showList(name) {
+  listName = name;
+  renderList();
+  showScreen('list');
+}
+
+function findTask(id) {
+  return [...view.openTasks, ...view.doneToday].find((task) => task.id === id) ?? null;
+}
+
+// Opens a task's details. "back" returns to the screen it was opened from.
+function showDetail(taskId) {
+  if (!view || !findTask(taskId)) return;
+  detailBack = screen === 'detail' ? detailBack : screen;
+  detailId = taskId;
+  renderDetail();
+  showScreen('detail');
+}
+
+function goBack() {
+  if (screen === 'detail') {
+    detailId = null;
+    if (detailBack === 'list') showList(listName);
+    else showScreen('home');
+  } else if (screen === 'list') {
+    showScreen('home');
+  }
+}
+
+// ---------- home ----------
+
+function renderHeader() {
+  const now = new Date();
+  $('date').textContent = now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+  $('receipt-no').textContent = `NO. ${view.today.replaceAll('-', '')}`;
+  $('hold').hidden = !view.paused;
+  $('pause').textContent = view.paused ? `on hold till ${formatTime(view.pausedUntil)}. resume` : 'pause 1 hour';
+}
+
+function renderSections() {
+  const kept = view.doneToday.length;
+  $('today-count').textContent = `${view.todayOpen.length} owed · ${kept} kept`;
+  $('carried-count').textContent = `${view.carried.length} owed`;
+  $('total-kept').textContent = kept;
+  $('total-owed').textContent = view.openTasks.length;
+  const bars = barWidths(`${view.today}:${kept}:${view.openTasks.length}`).map((width, index) => {
+    const bar = el('span', { className: index % 2 ? 'gap' : '' });
+    bar.style.width = `${width}px`;
+    return bar;
+  });
+  $('barcode').replaceChildren(...bars);
+}
+
+// ---------- list ----------
 
 function lineTop(task, when) {
   return el('span', { className: 'line-top' }, [
@@ -184,7 +221,7 @@ function lineTop(task, when) {
   ]);
 }
 
-function openLine(task) {
+function openLine(task, carried) {
   const box = el('button', { className: 'box', type: 'button', textContent: '[ ]', title: 'Mark kept' });
   box.addEventListener('mouseenter', () => { box.textContent = '[✓]'; });
   box.addEventListener('mouseleave', () => { box.textContent = '[ ]'; });
@@ -193,11 +230,11 @@ function openLine(task) {
     run(() => api.setDone(task.id, true));
   });
   const isNew = seen && !seen.has(task.id);
+  const sub = carried ? `since ${formatDay(task.createdAt).toLowerCase()}` : task.scheduleText.toLowerCase();
   const line = el('li', { className: isNew ? 'line printed' : 'line', title: 'Open details' }, [
     box,
     lineTop(task, task.nextAt ? formatWhen(task.nextAt) : '—'),
-    ...descriptionLine(task),
-    el('span', { className: 'sub', textContent: task.scheduleText.toLowerCase() }),
+    el('span', { className: 'sub', textContent: sub }),
   ]);
   line.addEventListener('click', () => showDetail(task.id));
   return line;
@@ -213,40 +250,28 @@ function keptLine(task) {
   const line = el('li', { className: 'line kept', title: 'Open details' }, [
     box,
     lineTop(task, formatTime(task.doneAt)),
-    ...descriptionLine(task),
     el('span', { className: justKept ? 'stamp thump' : 'stamp', textContent: 'Kept' }),
   ]);
   line.addEventListener('click', () => showDetail(task.id));
   return line;
 }
 
-function renderLines() {
-  $('lines').replaceChildren(...view.openTasks.map(openLine), ...view.doneToday.map(keptLine));
-  $('lines-empty').hidden = view.openTasks.length + view.doneToday.length > 0;
+function renderList() {
+  const carried = listName === 'carried';
+  const lines = carried
+    ? view.carried.map((task) => openLine(task, true))
+    : [...view.todayOpen.map((task) => openLine(task, false)), ...view.doneToday.map(keptLine)];
+  $('list-heading').textContent = LISTS[listName].heading;
+  $('lines').replaceChildren(...lines);
+  $('lines-empty').textContent = LISTS[listName].empty;
+  $('lines-empty').hidden = lines.length > 0;
   seen = new Map([
     ...view.openTasks.map((task) => [task.id, 'open']),
     ...view.doneToday.map((task) => [task.id, 'kept']),
   ]);
 }
 
-// Skips identical updates. The app sends state every 20 seconds, and redrawing would reset hover and "sure?".
-function render(next) {
-  const json = JSON.stringify(next);
-  if (json === lastJson) return;
-  lastJson = json;
-  view = next;
-  renderHeader();
-  renderYesterday();
-  renderLines();
-  renderTotals();
-  renderDetail();
-}
-
-// ---------- details screen ----------
-
-function findTask(id) {
-  return [...view.openTasks, ...view.doneToday].find((task) => task.id === id) ?? null;
-}
+// ---------- details ----------
 
 function fact(label, value) {
   return el('div', {}, [el('dt', { textContent: label }), el('dd', { textContent: value })]);
@@ -260,19 +285,20 @@ function detailActions(task) {
     toggle,
     ...(kept ? [] : [linkButton('snooze 15 min', () => run(() => api.snooze(task.id)))]),
     linkButton('edit', () => {
-      showReceipt();
+      detailId = null;
+      showScreen('home');
       startEdit(task);
     }),
     voidButton(task),
   ];
 }
 
-// Goes back to the receipt when the task is gone, for example after "void".
+// Goes back when the task is gone, for example after "void".
 function renderDetail() {
   if (!detailId) return;
   const task = findTask(detailId);
   if (!task) {
-    showReceipt();
+    goBack();
     return;
   }
   const kept = Boolean(task.doneAt);
@@ -283,32 +309,22 @@ function renderDetail() {
   $('detail-facts').replaceChildren(
     fact('Schedule', task.scheduleText),
     fact('Next reminder', !kept && task.nextAt ? formatWhen(task.nextAt) : '—'),
-    fact('Added', formatWhen(task.createdAt)),
+    fact('Added', `${formatDay(task.createdAt)}, ${formatTime(task.createdAt)}`),
     fact('Status', kept ? `Kept at ${formatTime(task.doneAt)}` : 'Still owed'),
   );
   $('detail-actions').replaceChildren(...detailActions(task));
 }
 
-function showDetail(taskId) {
-  if (!view || !findTask(taskId)) return;
-  detailId = taskId;
-  $('receipt').hidden = true;
-  $('detail').hidden = false;
+// Skips identical updates. The app sends state every 20 seconds, and redrawing would reset hover and "sure?".
+function render(next) {
+  const json = JSON.stringify(next);
+  if (json === lastJson) return;
+  lastJson = json;
+  view = next;
+  renderHeader();
+  renderSections();
+  renderList();
   renderDetail();
-  window.scrollTo(0, 0);
-}
-
-function showReceipt() {
-  detailId = null;
-  $('detail').hidden = true;
-  $('receipt').hidden = false;
-  $('task-title').focus();
-}
-
-// Puts the cursor in the promise input, unless you are already typing in another field.
-function focusPromiseInput() {
-  const busy = document.activeElement?.matches('input, textarea, select');
-  if (!detailId && !$('settings').open && !busy) $('task-title').focus();
 }
 
 // ---------- task form ----------
@@ -317,7 +333,7 @@ function resetForm() {
   editingId = null;
   $('task-form').reset();
   fillSchedule('task', { type: 'none' });
-  $('form-heading').textContent = 'New promise';
+  $('form-heading').textContent = "Today's promise";
   $('form-submit').textContent = 'Print promise';
   $('form-cancel').hidden = true;
   showError($('form-error'), null);
@@ -332,7 +348,12 @@ function startEdit(task) {
   $('form-submit').textContent = 'Reprint';
   $('form-cancel').hidden = false;
   $('task-title').focus();
-  $('task-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// A short "printed ✓", since the new line is on another screen.
+function flashDone() {
+  $('form-done').hidden = false;
+  setTimeout(() => { $('form-done').hidden = true; }, DONE_MS);
 }
 
 async function submitTask(event) {
@@ -347,16 +368,18 @@ async function submitTask(event) {
     resetForm();
     $('greeting').hidden = true;
     $('task-title').focus();
+    flashDone();
   }
 }
 
 // ---------- settings ----------
 
 function openSettings() {
-  const { nudge, startAtLogin, webhookUrl } = view.settings;
+  const { nudge, startAtLogin, webhookUrl, carryTime } = view.settings;
   fillSchedule('nudge', nudge);
   $('start-at-login').checked = startAtLogin;
   $('webhook-url').value = webhookUrl ?? '';
+  $('carry-time').value = carryTime ?? '';
   $('settings-status').hidden = true;
   showError($('settings-error'), null);
   $('settings').showModal();
@@ -367,6 +390,7 @@ async function saveSettings() {
     nudge: readSchedule('nudge'),
     startAtLogin: $('start-at-login').checked,
     webhookUrl: $('webhook-url').value,
+    carryTime: $('carry-time').value,
   };
   if (await run(() => api.saveSettings(input), $('settings-error'))) $('settings').close();
 }
@@ -393,8 +417,15 @@ function greet(summary) {
   $('greeting-text').textContent = tracked === 0
     ? 'Fresh receipt. What do you promise yourself today?'
     : `Yesterday you kept ${summary.done.length} and still owe ${summary.open.length}. What do you promise today?`;
-  showReceipt();
+  detailId = null;
+  showScreen('home');
   $('greeting').hidden = false;
+}
+
+// Puts the cursor in the promise input, unless you are already typing in another field.
+function focusPromiseInput() {
+  const busy = document.activeElement?.matches('input, textarea, select');
+  if (screen === 'home' && !$('settings').open && !busy) $('task-title').focus();
 }
 
 function togglePause() {
@@ -408,6 +439,10 @@ function bindEvents() {
   $('nudge-type').addEventListener('change', () => showScheduleFields('nudge'));
   $('task-form').addEventListener('submit', submitTask);
   $('form-cancel').addEventListener('click', resetForm);
+  $('open-today').addEventListener('click', () => showList('today'));
+  $('open-carried').addEventListener('click', () => showList('carried'));
+  $('list-back').addEventListener('click', goBack);
+  $('detail-back').addEventListener('click', goBack);
   $('pause').addEventListener('click', togglePause);
   $('open-settings').addEventListener('click', openSettings);
   $('settings-save').addEventListener('click', saveSettings);
@@ -416,9 +451,8 @@ function bindEvents() {
   $('greeting-close').addEventListener('click', () => {
     $('greeting').hidden = true;
   });
-  $('detail-back').addEventListener('click', showReceipt);
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && detailId) showReceipt();
+    if (event.key === 'Escape' && !$('settings').open) goBack();
   });
   window.addEventListener('focus', focusPromiseInput);
   api.onState(render);

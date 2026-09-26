@@ -102,11 +102,6 @@ hr.cut { border: 0; border-top: 2px dashed var(--rule); margin: 16px 0; }
 
 /* ---------- today's lines ---------- */
 
-/* A fixed-height list, so a long day scrolls inside the receipt. */
-.lines-scroll { max-height: 300px; overflow-y: auto; margin-right: -10px; padding-right: 10px; }
-.lines-scroll::-webkit-scrollbar { width: 6px; }
-.lines-scroll::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
-
 .lines { list-style: none; margin: 0; padding: 0; }
 
 .line {
@@ -120,13 +115,11 @@ hr.cut { border: 0; border-top: 2px dashed var(--rule); margin: 16px 0; }
 
 .line:hover .what { text-decoration: underline dotted; text-underline-offset: 3px; }
 .line.kept:hover .what { text-decoration: line-through; }
-.lines .desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .line-top { display: flex; align-items: baseline; min-width: 0; }
 .what { font-weight: 700; text-transform: uppercase; overflow-wrap: anywhere; }
 .dots { flex: 1; min-width: 12px; margin: 0 6px; border-bottom: 2px dotted var(--rule); transform: translateY(-4px); }
 .when { white-space: nowrap; }
-.desc { grid-column: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
 .sub { grid-column: 2; font-size: 11px; color: var(--ink-soft); }
 .sub .link { font-size: 11px; margin-left: 6px; }
 
@@ -141,12 +134,26 @@ hr.cut { border: 0; border-top: 2px dashed var(--rule); margin: 16px 0; }
   to { clip-path: inset(0 0 0 0); }
 }
 
-/* ---------- yesterday ---------- */
+/* ---------- home sections ---------- */
 
-.past { list-style: none; margin: 0 0 6px; padding: 0; }
-.past li { display: flex; gap: 8px; }
-.past .mark { width: 2ch; flex: none; }
-.past .owed-tag { margin-left: auto; color: var(--stamp); font-size: 11px; white-space: nowrap; }
+.sections { display: grid; gap: 4px; }
+
+.section-row {
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+
+.section-name { font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.section-count { white-space: nowrap; color: var(--ink-soft); }
+.arrow { margin-left: 10px; font-weight: 800; transition: transform 0.15s; }
+.section-row:hover .arrow { transform: translateX(3px); }
+.section-row:hover .section-name { text-decoration: underline dotted; text-underline-offset: 3px; }
 
 /* ---------- form ---------- */
 
