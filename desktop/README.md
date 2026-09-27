@@ -36,27 +36,48 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 
 ## Webhook
 
-In Settings, add a webhook URL and, if the server needs them, headers such as `Authorization: Bearer …`. Every notification Keepr shows is also POSTed there as JSON. That covers task reminders, the morning check-in and test reminders:
+In Settings, add a webhook URL and, if the server needs them, headers such as `Authorization: Bearer …`.
+
+- **One message per batch.** All reminders due at the same moment go in one request. So a daily nudge with 5 open tasks is one message, not 5.
+- **One at a time.** Requests are queued and start at least 1.5 seconds apart, so Slack never gets a burst.
+- **Nightly summary.** At 23:00 by default, one message lists every promise still open, grouped by the day it was promised for. It still sends when nothing is left over, so you know the day is clear. Change the time in Settings, or leave it empty to turn it off.
+- The morning check-in and "send a test reminder" also go through the queue.
+- A failed request is logged and skipped, with no retry. Desktop notifications show either way.
+
+Every request is one JSON message:
 
 ```json
 {
-  "text": "Open chargebacks\nTwo to be solved today",
-  "content": "Open chargebacks\nTwo to be solved today",
   "app": "Keepr",
-  "kind": "reminder",
-  "title": "Open chargebacks",
-  "description": "Two to be solved today",
-  "taskId": "…",
-  "sentAt": "2026-09-25T12:00:00.000Z"
+  "kind": "reminders",
+  "title": "Keepr reminder",
+  "sections": [
+    {
+      "heading": "You promised yourself today",
+      "tasks": [
+        { "taskId": "…", "title": "Open chargebacks", "description": "Two to be solved today",
+          "promisedFor": "2026-09-27", "dueText": "Fulfil by Sun, 27 Sept, midnight" }
+      ]
+    },
+    {
+      "heading": "Still owed from earlier days",
+      "tasks": [
+        { "taskId": "…", "title": "Test juspay payments", "description": "",
+          "promisedFor": "2026-09-25", "dueText": "Promised for Fri, 25 Sept, not kept" }
+      ]
+    }
+  ],
+  "text": "Keepr reminder\n\nYou promised yourself today\n• Open chargebacks: …",
+  "content": "(same as text)",
+  "sentAt": "2026-09-27T15:30:00.000Z"
 }
 ```
 
-- `text` is what a Slack incoming webhook shows, and `content` is what Discord shows. So a Slack or Discord webhook URL works as it is.
-- `kind` is `reminder`, `carried` (a task from an earlier day), `check-in` or `test`.
-- "send a test reminder" in Settings uses the URL and headers typed in the boxes, even before you save, and shows how the webhook replied.
+- `kind` is `reminders`, `leftover` (the nightly summary), `check-in` (has a `note` and no sections) or `test`.
+- `text` (Slack) and `content` (Discord) hold the whole message as plain text, so a plain Slack or Discord webhook URL works as is.
+- `dueText` is already formatted in the laptop's time zone.
 - Headers are saved in the data file as plain text, so treat that file like a password file.
-- To post to the PeerUp #keepr Slack channel, use `https://web.api.peerup.co.in/internal/keepr/alerts`. It needs no headers.
-- A failed webhook is logged and skipped, with no retry. The desktop notification still shows.
+- To post to the PeerUp #keepr Slack channel, use `https://api.peerup.co.in/internal/keepr/alerts`. It needs no headers.
 
 ## Where data lives
 

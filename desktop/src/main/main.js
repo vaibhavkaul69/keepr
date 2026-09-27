@@ -7,12 +7,22 @@ const { dayKey, addDays } = require('./dates');
 const { loadState, saveState } = require('./store');
 const { cleanSchedule } = require('./schedule');
 const { cleanSettings } = require('./settings');
-const { makeTask, addTask, editTask, markDone, snoozeTask, removeTask, openTasks, moveToToday } = require('./tasks');
+const {
+  makeTask,
+  addTask,
+  editTask,
+  markDone,
+  snoozeTask,
+  removeTask,
+  openTasks,
+  plannedDay,
+  moveToToday,
+} = require('./tasks');
 const { checkReminders, pauseReminders, resumeReminders } = require('./reminders');
 const { makeView, summarizeDay } = require('./view');
 const { taskMessage, checkInMessage } = require('./messages');
 const { showAlert } = require('./notify');
-const { cleanWebhookUrl, cleanHeaders, webhookPayload, sendWebhook } = require('./webhook');
+const { cleanWebhookUrl, cleanHeaders, reminderPayload, leftoverPayload, notePayload, queueWebhook } = require('./webhook');
 const { createWindow, showWindow, sendToWindow, allowQuit } = require('./window');
 const { createTray, updateTray } = require('./tray');
 const { setStartAtLogin } = require('./startup');
@@ -42,19 +52,31 @@ function openTask(taskId) {
   if (taskId) sendToWindow('focus-task', taskId);
 }
 
-// Shows the desktop notification, and also POSTs it to the webhook when one is set.
-function deliver(alert) {
-  showAlert(alert, openTask);
+// Queues one webhook message when a webhook URL is set. The queue sends one at a time, 1.5 s apart.
+function postWebhook(body) {
   const { webhookUrl, webhookHeaders } = state.settings;
-  if (webhookUrl) sendWebhook(webhookUrl, webhookHeaders ?? [], webhookPayload(alert, new Date()));
+  if (webhookUrl) queueWebhook(webhookUrl, webhookHeaders ?? [], body);
+}
+
+// The nightly summary: one desktop notification and one webhook message listing every open task.
+function sendLeftover(tasks, now) {
+  if (tasks.length) {
+    const count = `${tasks.length} ${tasks.length === 1 ? 'promise' : 'promises'}`;
+    showAlert({ taskId: null, title: 'Keepr: left over tonight', body: `${count} not kept yet.` }, openTask);
+  }
+  postWebhook(leftoverPayload(tasks, dayKey(now), now));
 }
 
 // Works out next reminder times, sends any that are due, then saves. Runs on the timer and after every change,
 // so a new or edited schedule shows its next reminder right away instead of "—".
+// Each due task gets its own desktop notification. The webhook gets them all in one message.
 function tick(next = state) {
-  const result = checkReminders(next, new Date());
+  const now = new Date();
+  const result = checkReminders(next, now);
   const view = commit(result.state);
-  result.alerts.forEach(deliver);
+  result.alerts.forEach((alert) => showAlert(alert, openTask));
+  if (result.dueTasks.length) postWebhook(reminderPayload(result.dueTasks, dayKey(now), now));
+  if (result.leftover) sendLeftover(result.leftover, now);
   return view;
 }
 
@@ -67,7 +89,9 @@ function checkIn() {
   commit({ ...state, lastOpenDay: today });
   showWindow();
   sendToWindow('checkin', summary);
-  deliver({ kind: 'check-in', taskId: null, ...checkInMessage(summary) });
+  const message = checkInMessage(summary);
+  showAlert({ taskId: null, ...message }, openTask);
+  postWebhook(notePayload('check-in', message.title, message.body, now));
 }
 
 function onWake() {
@@ -78,7 +102,7 @@ function onWake() {
 function saveSettings(input) {
   const settings = cleanSettings(input, new Date());
   setStartAtLogin(settings.startAtLogin);
-  return tick({ ...state, settings, nudgeNextAt: null, carryNextAt: null });
+  return tick({ ...state, settings, nudgeNextAt: null, carryNextAt: null, leftoverNextAt: null });
 }
 
 // Shows the first open task's reminder, or a sample when nothing is open.
@@ -86,10 +110,17 @@ function saveSettings(input) {
 async function testReminder(webhookInput) {
   const url = cleanWebhookUrl(webhookInput?.url);
   const headers = cleanHeaders(webhookInput?.headers);
-  const first = openTasks(state.tasks)[0] ?? { id: null, title: 'Keepr', description: 'Reminders are working.' };
-  const alert = { kind: 'test', taskId: first.id, ...taskMessage(first) };
+  const now = new Date();
+  const first = openTasks(state.tasks)[0];
+  const alert = first
+    ? { taskId: first.id, ...taskMessage(first) }
+    : { taskId: null, title: 'Keepr', body: 'Reminders are working.' };
   showAlert(alert, openTask);
-  return { webhook: url ? await sendWebhook(url, headers, webhookPayload(alert, new Date())) : null };
+  if (!url) return { webhook: null };
+  const body = first
+    ? reminderPayload([{ ...first, plannedDay: plannedDay(first) }], dayKey(now), now)
+    : notePayload('test', 'Keepr test', 'Reminders are working.', now);
+  return { webhook: await queueWebhook(url, headers, { ...body, kind: 'test' }) };
 }
 
 function readTask(input, now) {

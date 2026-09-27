@@ -416,13 +416,14 @@ async function submitTask(event) {
 // ---------- settings ----------
 
 function openSettings() {
-  const { nudge, startAtLogin, webhookUrl, webhookHeaders, carryTime } = view.settings;
+  const { nudge, startAtLogin, webhookUrl, webhookHeaders, carryTime, leftoverTime } = view.settings;
   fillSchedule('nudge', nudge);
   $('start-at-login').checked = startAtLogin;
   $('webhook-url').value = webhookUrl ?? '';
   fillHeaders(webhookHeaders);
   showHeadersBox();
   $('carry-time').value = carryTime ?? '';
+  $('leftover-time').value = leftoverTime ?? '';
   $('settings-status').hidden = true;
   showError($('settings-error'), null);
   $('settings').showModal();
@@ -435,6 +436,7 @@ async function saveSettings() {
     webhookUrl: $('webhook-url').value,
     webhookHeaders: readHeaders(),
     carryTime: $('carry-time').value,
+    leftoverTime: $('leftover-time').value,
   };
   if (await run(() => api.saveSettings(input), $('settings-error'))) $('settings').close();
 }

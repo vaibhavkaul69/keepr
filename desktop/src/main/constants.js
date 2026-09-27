@@ -15,6 +15,8 @@ const PAUSE_MINUTES = 60;
 const MAX_TITLE = 200;
 const MAX_DESCRIPTION = 1000;
 const WEBHOOK_TIMEOUT_MS = 10 * 1000;
+// Webhooks go one at a time, at least this far apart, so Slack never rate-limits Keepr.
+const WEBHOOK_GAP_MS = 1500;
 
 const DEFAULT_SETTINGS = {
   nudge: { type: 'daily', times: ['10:00', '12:00', '14:00', '16:00', '18:00'] },
@@ -24,6 +26,8 @@ const DEFAULT_SETTINGS = {
   webhookHeaders: [],
   // One daily reminder for every task carried over from an earlier day. Blank turns it off.
   carryTime: '11:00',
+  // One webhook message a day listing every task still open. Blank turns it off.
+  leftoverTime: '23:00',
 };
 
 module.exports = {
@@ -39,5 +43,6 @@ module.exports = {
   MAX_TITLE,
   MAX_DESCRIPTION,
   WEBHOOK_TIMEOUT_MS,
+  WEBHOOK_GAP_MS,
   DEFAULT_SETTINGS,
 };

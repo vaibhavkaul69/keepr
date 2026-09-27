@@ -11,6 +11,7 @@ function cleanSettings(input, now) {
     webhookUrl: cleanWebhookUrl(input?.webhookUrl),
     webhookHeaders: cleanHeaders(input?.webhookHeaders),
     carryTime: parseTimes(input?.carryTime)[0] ?? '',
+    leftoverTime: parseTimes(input?.leftoverTime)[0] ?? '',
   };
 }
 

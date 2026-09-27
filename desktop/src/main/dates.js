@@ -39,8 +39,13 @@ function toIso(date) {
   return date ? date.toISOString() : null;
 }
 
+// A "YYYY-MM-DD" day as "Sat 27 Sept", read as local midnight.
+function formatDayKey(day) {
+  return new Date(`${day}T00:00:00`).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 function formatDateTime(date) {
   return new Date(date).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
-module.exports = { MINUTE_MS, dayKey, addDays, addMinutes, atTime, endOfDay, toIso, formatDateTime };
+module.exports = { MINUTE_MS, dayKey, addDays, addMinutes, atTime, endOfDay, toIso, formatDayKey, formatDateTime };
