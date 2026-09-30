@@ -1,5 +1,6 @@
 const { APP_NAME, WEBHOOK_TIMEOUT_MS } = require('./constants');
 const { formatDayKey } = require('./dates');
+const { taskMessage } = require('./messages');
 
 // Blank means "no webhook". Anything else must be an http(s) URL. Throws a readable error.
 function cleanWebhookUrl(value) {
@@ -82,10 +83,11 @@ function promiseCount(tasks) {
   return `${tasks.length} ${tasks.length === 1 ? 'promise' : 'promises'}`;
 }
 
-// One of today's tasks, as its own message: just its title. `taskId` and `promisedFor` are there for other servers.
-function taskPayload(task, today, now) {
-  const body = payload('reminder', task.title, [], now);
-  return { ...body, taskId: task.id, promisedFor: task.plannedDay };
+// One of today's tasks, as its own message: the same title and line as its desktop notification.
+// `taskId` and `promisedFor` are there for other servers.
+function taskPayload(task, now) {
+  const { title, body } = taskMessage(task);
+  return { ...notePayload('reminder', title, body, now), taskId: task.id, promisedFor: task.plannedDay };
 }
 
 // Every older task in one message.

@@ -26,7 +26,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
   - **Carried over**: open tasks from earlier days, grouped by the day you promised them ("Fri 25 Sept · promised, not kept"), newest day first. **move to today** on a task, **move all to today** at the top, or **Move to today** in its details brings it back to Today's promises. Its reminders start again, and the days it missed stay in its details.
 - **Details.** Click a task, or its notification, to see its description, schedule, next reminder and status. Snooze, edit and delete are there too. **← back** or Esc goes back.
 - **Delete** a promise from its line in either list or from its details. It asks "sure? click again" first, so one stray click never loses a promise.
-- **Notifications** show only the task title and its description.
+- **Notifications** show the task title, then its description. A task with no description shows its fulfil-by time instead, like "Fulfil by Wed, 30 Sept, midnight".
 - **Daily nudges.** At the times set in Settings, each of today's open tasks gets its own notification. The default is 10:00, 12:00, 14:00, 16:00 and 18:00.
 - **Older tasks are never sent one by one.** Tasks carried over from earlier days come back together: one combined notification and one message at the carried-over time (11:00 by default), and in the nightly summary. Move one to today to get its own reminders again. Change the carried-over time in Settings, or leave it empty to turn it off.
 - **One at a time.** When several notifications are due together, they go out 1 second apart, each with its webhook message. A task gets at most one notification per check, even when its own reminder and a nudge are due together.
@@ -39,7 +39,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 
 In Settings, add a webhook URL and, if the server needs them, headers such as `Authorization: Bearer …`.
 
-- **One message per notification.** Each of today's tasks is its own message, with only the task title. Older tasks come as one combined message, grouped by day.
+- **One message per notification.** Each of today's tasks is its own message, with the same title and line as its desktop notification. Older tasks come as one combined message, grouped by day.
 - **One at a time.** Messages are queued with the desktop notifications and go out 1 second apart, so Slack never gets a burst.
 - **Nightly summary.** At 23:00 by default, one message lists every promise still open, grouped by the day it was promised for. It still sends when nothing is left over, so you know the day is clear. Change the time in Settings, or leave it empty to turn it off.
 - The morning check-in and "send a test reminder" also go through the queue.
@@ -51,17 +51,18 @@ Every request is one JSON message:
 {
   "app": "Keepr",
   "kind": "reminder",
-  "title": "Open chargebacks",
+  "title": "Add proofs for disputes",
+  "note": "Fulfil by Wed, 30 Sept, midnight",
   "sections": [],
-  "text": "Open chargebacks",
-  "content": "Open chargebacks",
+  "text": "Add proofs for disputes\nFulfil by Wed, 30 Sept, midnight",
+  "content": "(same as text)",
   "taskId": "…",
   "promisedFor": "2026-09-30",
   "sentAt": "2026-09-30T07:30:00.000Z"
 }
 ```
 
-A reminder for one of today's tasks is just its title. The combined messages (older tasks and the nightly summary) use `sections`, one per day, each with `tasks: [{ taskId, title, description, promisedFor, dueText }]`.
+A reminder for one of today's tasks has its title and one `note` line: the description, or the fulfil-by time when there is none. The combined messages (older tasks and the nightly summary) use `sections`, one per day, each with `tasks: [{ taskId, title, description, promisedFor, dueText }]`.
 
 - `kind` is `reminder` (one of today's tasks), `carried` (all older tasks, one section per day), `leftover` (the nightly summary, one section per day), `check-in` (has a `note` and no sections) or `test`.
 - `text` (Slack) and `content` (Discord) hold the whole message as plain text, so a plain Slack or Discord webhook URL works as is.

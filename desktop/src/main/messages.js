@@ -1,8 +1,15 @@
 const { APP_NAME } = require('./constants');
+const { formatDayKey } = require('./dates');
 
-// A reminder shows only what you wrote: the task title, and its description if it has one.
+// A task is due by the end of the day it is promised for. `day` is "YYYY-MM-DD".
+function fulfilText(day) {
+  return `Fulfil by ${formatDayKey(day)}, midnight`;
+}
+
+// A reminder for one task: its title, then its description, or its fulfil-by time when it has no description.
+// `task.plannedDay` is the day it is promised for.
 function taskMessage(task) {
-  return { title: task.title, body: task.description ?? '' };
+  return { title: task.title, body: task.description || fulfilText(task.plannedDay) };
 }
 
 function checkInMessage(summary) {
@@ -35,4 +42,4 @@ function leftoverMessage(tasks) {
   return tasks.length ? { title: 'Keepr: left over tonight', body: `${promiseCount(tasks)} not kept yet.` } : null;
 }
 
-module.exports = { taskMessage, checkInMessage, carriedMessage, leftoverMessage };
+module.exports = { fulfilText, taskMessage, checkInMessage, carriedMessage, leftoverMessage };

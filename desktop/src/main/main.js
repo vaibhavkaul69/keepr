@@ -79,7 +79,7 @@ function tick(next = state) {
   const today = dayKey(now);
   const result = checkReminders(next, now);
   const view = commit(result.state);
-  result.dueTasks.forEach((task) => send({ taskId: task.id, ...taskMessage(task) }, taskPayload(task, today, now)));
+  result.dueTasks.forEach((task) => send({ taskId: task.id, ...taskMessage(task) }, taskPayload(task, now)));
   if (result.carried) {
     send({ taskId: null, ...carriedMessage(result.carried) }, carriedPayload(result.carried, today, now));
   }
@@ -120,12 +120,13 @@ async function testReminder(webhookInput) {
   const url = cleanWebhookUrl(webhookInput?.url);
   const headers = cleanHeaders(webhookInput?.headers);
   const now = new Date();
-  const first = openTasks(state.tasks)[0];
+  const open = openTasks(state.tasks)[0];
+  const first = open && { ...open, plannedDay: plannedDay(open) };
   const alert = first
     ? { taskId: first.id, ...taskMessage(first) }
     : { taskId: null, title: 'Keepr', body: 'Reminders are working.' };
   const body = first
-    ? taskPayload({ ...first, plannedDay: plannedDay(first) }, dayKey(now), now)
+    ? taskPayload(first, now)
     : notePayload('test', 'Keepr test', 'Reminders are working.', now);
   const webhook = await enqueue(async () => {
     showAlert(alert, openTask);
