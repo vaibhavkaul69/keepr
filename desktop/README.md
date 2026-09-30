@@ -38,7 +38,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 
 In Settings, add a webhook URL and, if the server needs them, headers such as `Authorization: Bearer …`.
 
-- **One message per notification.** Each of today's tasks is its own message. Older tasks come as one combined message, grouped by day.
+- **One message per notification.** Each of today's tasks is its own message, with only the task title. Older tasks come as one combined message, grouped by day.
 - **One at a time.** Messages are queued with the desktop notifications and go out 1 second apart, so Slack never gets a burst.
 - **Nightly summary.** At 23:00 by default, one message lists every promise still open, grouped by the day it was promised for. It still sends when nothing is left over, so you know the day is clear. Change the time in Settings, or leave it empty to turn it off.
 - The morning check-in and "send a test reminder" also go through the queue.
@@ -50,21 +50,17 @@ Every request is one JSON message:
 {
   "app": "Keepr",
   "kind": "reminder",
-  "title": "You promised yourself today",
-  "sections": [
-    {
-      "heading": "",
-      "tasks": [
-        { "taskId": "…", "title": "Open chargebacks", "description": "Two to be solved today",
-          "promisedFor": "2026-09-30", "dueText": "Fulfil by Wed, 30 Sept, midnight" }
-      ]
-    }
-  ],
-  "text": "You promised yourself today\n\n• Open chargebacks: Two to be solved today (Fulfil by Wed, 30 Sept, midnight)",
-  "content": "(same as text)",
+  "title": "Open chargebacks",
+  "sections": [],
+  "text": "Open chargebacks",
+  "content": "Open chargebacks",
+  "taskId": "…",
+  "promisedFor": "2026-09-30",
   "sentAt": "2026-09-30T07:30:00.000Z"
 }
 ```
+
+A reminder for one of today's tasks is just its title. The combined messages (older tasks and the nightly summary) use `sections`, one per day, each with `tasks: [{ taskId, title, description, promisedFor, dueText }]`.
 
 - `kind` is `reminder` (one of today's tasks), `carried` (all older tasks, one section per day), `leftover` (the nightly summary, one section per day), `check-in` (has a `note` and no sections) or `test`.
 - `text` (Slack) and `content` (Discord) hold the whole message as plain text, so a plain Slack or Discord webhook URL works as is.

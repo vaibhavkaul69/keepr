@@ -82,10 +82,10 @@ function promiseCount(tasks) {
   return `${tasks.length} ${tasks.length === 1 ? 'promise' : 'promises'}`;
 }
 
-// One of today's tasks, as its own message.
+// One of today's tasks, as its own message: just its title. `taskId` and `promisedFor` are there for other servers.
 function taskPayload(task, today, now) {
-  const section = { heading: '', tasks: [taskItem(task, `Fulfil by ${formatDayKey(today)}, midnight`)] };
-  return payload('reminder', 'You promised yourself today', [section], now);
+  const body = payload('reminder', task.title, [], now);
+  return { ...body, taskId: task.id, promisedFor: task.plannedDay };
 }
 
 // Every older task in one message.
