@@ -1,7 +1,6 @@
 const { addMinutes, dayKey, toIso } = require('./dates');
 const { nextTime } = require('./schedule');
 const { openTasks, plannedDay, isCarried } = require('./tasks');
-const { taskMessage } = require('./messages');
 
 function isPaused(state, now) {
   return Boolean(state.pausedUntil) && new Date(state.pausedUntil) > now;
@@ -32,30 +31,28 @@ function stepTask(task, now) {
   return { task: { ...task, nextAt: step.nextAt }, due: step.due };
 }
 
-// Finds due reminders and moves each one to its next time. Also says when the nightly leftover summary is due.
-// Three things can make a task due:
-//   its own schedule, the daily nudge (every open task), and the carried-over reminder (tasks from earlier days).
-// A task gets at most one notification per check, however many of these are due together.
-// While paused, due reminders are skipped, not saved for later.
+function withPlannedDay(task) {
+  return { ...task, plannedDay: plannedDay(task) };
+}
+
+// Finds what is due and moves each schedule to its next time.
+//   Today's tasks: each due one gets its own reminder, from its own schedule or the daily nudge.
+//   Older, carried tasks: never one by one. They come back together in the carried-over list and the nightly summary.
+// While paused, nothing is due, and missed times are skipped, not saved for later.
 function checkReminders(state, now) {
   const today = dayKey(now);
   const steps = state.tasks.map((task) => stepTask(task, now));
   const nudge = stepSchedule(state.settings.nudge, state.nudgeNextAt, now);
   const carry = stepSchedule(dailyAt(state.settings.carryTime), state.carryNextAt, now);
   const leftover = stepSchedule(dailyAt(state.settings.leftoverTime), state.leftoverNextAt, now);
-  const open = openTasks(state.tasks);
+  const open = openTasks(state.tasks).map(withPlannedDay);
+  const todays = open.filter((task) => !isCarried(task, today));
+  const carried = open.filter((task) => isCarried(task, today));
   const dueIds = new Set([
     ...steps.filter((step) => step.due).map((step) => step.task.id),
-    ...(nudge.due ? open.map((task) => task.id) : []),
-    ...(carry.due ? open.filter((task) => isCarried(task, today)).map((task) => task.id) : []),
+    ...(nudge.due ? todays.map((task) => task.id) : []),
   ]);
   const paused = isPaused(state, now);
-  const dueTasks = paused ? [] : open.filter((task) => dueIds.has(task.id)).map((task) => ({ ...task, plannedDay: plannedDay(task) }));
-  const alerts = dueTasks.map((task) => ({
-    kind: isCarried(task, today) ? 'carried' : 'reminder',
-    taskId: task.id,
-    ...taskMessage(task),
-  }));
   return {
     state: {
       ...state,
@@ -64,10 +61,12 @@ function checkReminders(state, now) {
       carryNextAt: carry.nextAt,
       leftoverNextAt: leftover.nextAt,
     },
-    alerts,
-    dueTasks,
+    // Today's tasks due now, one reminder each.
+    dueTasks: paused ? [] : todays.filter((task) => dueIds.has(task.id)),
+    // Older tasks, when the carried-over reminder is due and there are any. Null otherwise.
+    carried: carry.due && !paused && carried.length ? carried : null,
     // Every open task, when the nightly summary is due. Null otherwise.
-    leftover: leftover.due && !paused ? open.map((task) => ({ ...task, plannedDay: plannedDay(task) })) : null,
+    leftover: leftover.due && !paused ? open : null,
   };
 }
 
