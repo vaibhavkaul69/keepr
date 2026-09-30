@@ -122,6 +122,7 @@ hr.cut { border: 0; border-top: 2px dashed var(--rule); margin: 16px 0; }
 .when { white-space: nowrap; }
 .sub { grid-column: 2; font-size: 11px; color: var(--ink-soft); }
 .sub .link { font-size: 11px; margin-left: 6px; }
+.link.delete:hover { color: var(--error); }
 
 .box { font: inherit; font-weight: 700; padding: 0; border: 0; background: none; color: var(--ink); }
 

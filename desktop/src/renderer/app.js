@@ -99,17 +99,19 @@ function linkButton(label, onClick) {
   return button;
 }
 
-// "void" asks for a second click, so one stray click never loses a task.
-function voidButton(task) {
-  const button = linkButton('void', () => {
+// "delete" asks for a second click, so one stray click never loses a task.
+function deleteButton(task) {
+  const button = linkButton('delete', (event) => {
+    event.stopPropagation();
     if (button.dataset.armed) return run(() => api.removeTask(task.id));
     button.dataset.armed = 'yes';
-    button.textContent = 'sure?';
+    button.textContent = 'sure? click again';
     setTimeout(() => {
       delete button.dataset.armed;
-      button.textContent = 'void';
+      button.textContent = 'delete';
     }, CONFIRM_MS);
   });
+  button.classList.add('delete');
   return button;
 }
 
@@ -253,7 +255,7 @@ function openLine(task, carried) {
   const line = el('li', { className: isNew ? 'line printed' : 'line', title: 'Open details' }, [
     box,
     lineTop(task, when),
-    ...(lineNote(task, carried) ? [el('span', { className: 'sub', textContent: lineNote(task, carried) })] : []),
+    el('span', { className: 'sub' }, lineNote(task, carried) ? [lineNote(task, carried), ' ·', deleteButton(task)] : [deleteButton(task)]),
   ]);
   line.addEventListener('click', () => showDetail(task.id));
   return line;
@@ -269,6 +271,7 @@ function keptLine(task) {
   const line = el('li', { className: 'line kept', title: 'Open details' }, [
     box,
     lineTop(task, formatTime(task.doneAt)),
+    el('span', { className: 'sub' }, [deleteButton(task)]),
     el('span', { className: justKept ? 'stamp thump' : 'stamp', textContent: 'Kept' }),
   ]);
   line.addEventListener('click', () => showDetail(task.id));
@@ -328,11 +331,11 @@ function detailActions(task) {
       showScreen('home');
       startEdit(task);
     }),
-    voidButton(task),
+    deleteButton(task),
   ];
 }
 
-// Goes back when the task is gone, for example after "void".
+// Goes back when the task is gone, for example after "delete".
 function renderDetail() {
   if (!detailId) return;
   const task = findTask(detailId);
