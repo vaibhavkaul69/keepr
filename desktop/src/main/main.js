@@ -2,7 +2,7 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { app, ipcMain, powerMonitor } = require('electron');
 
-const { APP_NAME, APP_ID, DATA_FILE, HIDDEN_FLAG, ICON_PATH, TICK_MS, SNOOZE_MINUTES, PAUSE_MINUTES } = require('./constants');
+const { APP_NAME, APP_ID, DATA_FILE, HIDDEN_FLAG, ICON_PATH, TICK_MS, SNOOZE_MINUTES, PAUSE_MINUTES, DEFAULT_TASK_SCHEDULE } = require('./constants');
 const { dayKey, addDays } = require('./dates');
 const { loadState, saveState } = require('./store');
 const { cleanSchedule } = require('./schedule');
@@ -135,7 +135,8 @@ async function testReminder(webhookInput) {
 }
 
 function readTask(input, now) {
-  return { title: input?.title, description: input?.description, schedule: cleanSchedule(input?.schedule, now) };
+  const schedule = cleanSchedule(input?.schedule ?? DEFAULT_TASK_SCHEDULE, now);
+  return { title: input?.title, description: input?.description, schedule };
 }
 
 const trayActions = {

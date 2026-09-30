@@ -18,6 +18,9 @@ const WEBHOOK_TIMEOUT_MS = 10 * 1000;
 // Notifications and webhook messages go one at a time, at least this far apart, so Slack never rate-limits Keepr.
 const SEND_GAP_MS = 1000;
 
+// A new task's reminders when you pick nothing else.
+const DEFAULT_TASK_SCHEDULE = { type: 'hourly' };
+
 const DEFAULT_SETTINGS = {
   nudge: { type: 'daily', times: ['10:00', '12:00', '14:00', '16:00', '18:00'] },
   startAtLogin: true,
@@ -44,5 +47,6 @@ module.exports = {
   MAX_DESCRIPTION,
   WEBHOOK_TIMEOUT_MS,
   SEND_GAP_MS,
+  DEFAULT_TASK_SCHEDULE,
   DEFAULT_SETTINGS,
 };

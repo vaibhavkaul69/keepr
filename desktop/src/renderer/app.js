@@ -373,7 +373,8 @@ function render(next) {
 function resetForm() {
   editingId = null;
   $('task-form').reset();
-  fillSchedule('task', { type: 'none' });
+  // Every hour is the default. Pick something else to change it.
+  fillSchedule('task', { type: 'hourly' });
   $('form-heading').textContent = "Today's promise";
   $('form-submit').textContent = 'Print promise';
   $('form-cancel').hidden = true;

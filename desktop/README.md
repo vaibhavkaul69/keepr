@@ -15,10 +15,10 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 ## What it does
 
 - **Home is for adding promises.** The first thing you see is "what's your next promise?". Type a title, add a description if you like, pick when to be reminded, and press **Print promise**.
-- **Reminder choices for a task:**
-  - only the daily nudges
-  - every minute, from the next minute until the end of today
+- **Reminder choices for a task.** Every hour is picked by default. Choose another option to change it.
   - every hour on the hour, 6 am to 12 midnight, every day. The first one is the next full hour: set at 7:51 pm, it goes 8, 9, 10, 11 and 12, then 6 am onwards the next day. It repeats daily until you mark the task kept.
+  - every minute, from the next minute until the end of today
+  - only the daily nudges
   - at set times every day, like `11:00, 14:00, 17:00`
   - once, at a set date and time
 - **Two lists**, opened from home:
