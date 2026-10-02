@@ -20,9 +20,9 @@ function createTray(actions) {
   ]));
 }
 
-// Shows the number of open tasks next to the icon.
+// Shows how many of today's promises are still owed. Carried-over tasks are not counted, so it starts at 0 each day.
 function updateTray(view) {
-  const title = ` ${view.openTasks.length}`;
+  const title = ` ${view.todayOpen.length}`;
   if (!tray || title === lastTitle) return;
   lastTitle = title;
   tray.setTitle(title);

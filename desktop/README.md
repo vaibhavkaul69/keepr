@@ -31,7 +31,7 @@ The first time a reminder fires, macOS asks whether to allow notifications. Allo
 - **Older tasks are never sent one by one.** Tasks carried over from earlier days come back together: one combined notification and one message at the carried-over time (11:00 by default), and in the nightly summary. Move one to today to get its own reminders again. Change the carried-over time in Settings, or leave it empty to turn it off.
 - **One at a time.** When several notifications are due together, they go out 1 second apart, each with its webhook message. A task gets at most one notification per check, even when its own reminder and a nudge are due together.
 - **Morning check-in.** The first time you open or unlock the laptop on a new day, Keepr shows how yesterday went and asks you to plan today.
-- **Menu bar.** Closing the window keeps Keepr running in the menu bar. The icon shows how many tasks are open. The menu has two items: Open Keepr and Quit Keepr.
+- **Menu bar.** Closing the window keeps Keepr running in the menu bar. The number next to the icon is how many of today's promises are still owed. Carried-over tasks don't count, so it starts at 0 each day. The menu has two items: Open Keepr and Quit Keepr.
 - **Pause** stops all reminders for an hour. Reminders due during a pause are skipped.
 - A reminder missed while the laptop was asleep fires once when it wakes, not once for every slot it missed.
 
